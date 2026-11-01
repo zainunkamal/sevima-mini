@@ -133,5 +133,49 @@ Tantangan arsitektur meliputi:
 
 ---
 
-## 6. Referensi Berkas Terkait
-* Diagram UML Mermaid: [`academic_class_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_class_diagram.mmd)
+## 6. Riwayat Perubahan & Evolusi Class Diagram (Architecture Evolution & Changelog)
+
+### 6.1 Latar Belakang Perubahan
+Pada iterasi awal perancangan (Baseline v1.0), sistem hanya memodelkan transaksi akademik murni (`Mahasiswa`, `Course`, `Enrollment`, `Grade`). Berdasarkan evaluasi proses bisnis institusi akademik, ditemukan celah krusial di mana pengisian KRS tidak memiliki validasi prasyarat pembayaran, sehingga mahasiswa berpotensi melakukan pendaftaran rencana studi tanpa menyelesaikan kewajiban finansial semester berjalan.
+
+Oleh karena itu, pada iterasi revisi (v1.1):
+1. Ditambahkan class inti **`Payment`** untuk mengelola tagihan biaya kuliah (SPP/UKT) dan verifikasi pelunasan.
+2. Ditambahkan method validasi pada **`Mahasiswa`** (`isiKRS()`, `cekStatusPembayaran()`, `lihatRiwayatPembayaran()`).
+3. Ditambahkan method validasi prasyarat finansial pada **`Enrollment`** (`validasiSyaratPembayaran(payment: Payment)`).
+4. Ditambahkan method verifikasi pembayaran pada **`Admin`** (`verifikasiPembayaran(payment: Payment)`).
+5. Ditambahkan relasi agregasi **`Mahasiswa "1" o-- "0..*" Payment : pays`** dan relasi dependensi **`Enrollment ..> Payment : validates prerequisite`**.
+
+---
+
+### 6.2 Matriks Komparasi Struktural (Before vs After)
+
+| Aspek / Komponen | Versi Awal (Baseline v1.0) | Versi Revisi (Dengan Payment v1.1) | Rationale & Dampak Desain |
+| :--- | :--- | :--- | :--- |
+| **Entitas Finansial** | Belum ada entitas pembayaran. | Ditambahkan class **`Payment`** dengan atribut tagihan & pelunasan. | Menjaga prinsip SRP dengan memisahkan domain audit finansial dari kurikulum. |
+| **Class `Mahasiswa`** | Hanya melihat riwayat (`lihatKRS`, `lihatKHS`). | Ditambahkan `isiKRS()`, `cekStatusPembayaran()`, `lihatRiwayatPembayaran()`. | Mahasiswa dapat memvalidasi kelayakan tagihan sebelum mengirim draft KRS. |
+| **Class `Enrollment`** | Pendaftaran tidak memvalidasi tagihan. | Ditambahkan `validasiSyaratPembayaran(payment: Payment) bool`. | Menjamin integritas bisnis: KRS tidak dapat disahkan tanpa status lunas. |
+| **Class `Admin`** | Hanya mengelola user & kurikulum. | Ditambahkan `verifikasiPembayaran(payment: Payment) void`. | Memberikan staf administrasi/keuangan otoritas verifikasi pembayaran manual. |
+| **Relasi Finansial** | Tidak ada relasi finansial. | `Mahasiswa "1" o-- "0..*" Payment` & `Enrollment ..> Payment`. | Pemodelan agregasi siklus hidup audit dan dependensi aturan bisnis KRS. |
+
+---
+
+### 6.3 Dokumentasi Visual Perbandingan (Diagram Screenshots)
+
+#### A. Versi Awal (Baseline v1.0 - Tanpa Entitas Payment)
+Pada diagram awal, alur pendaftaran perkuliahan (`Enrollment`) hanya mengaitkan `Mahasiswa` dengan `Course` secara langsung tanpa adanya lapisan verifikasi finansial.
+
+![Class Diagram Versi Awal (Baseline v1.0)](/home/zainun/Git/istn/sevima-mini/docs/adr/images/class-diagram-v1-baseline.png)
+
+#### B. Versi Revisi (Revisi v1.1 - Dengan Entitas Payment & Prasyarat KRS)
+Pada diagram revisi, entitas `Payment` ditambahkan di sudut kanan bawah dengan relasi kepemilikan oleh `Mahasiswa` (*Aggregation*) dan menjadi dependensi prasyarat mutlak bagi `Enrollment` (*Dependency*).
+
+![Class Diagram Versi Revisi (Revisi v1.1 - Dengan Payment)](/home/zainun/Git/istn/sevima-mini/docs/adr/images/class-diagram-v2-payment.png)
+
+---
+
+## 7. Referensi Berkas Terkait
+* Diagram UML Mermaid Utama: [`academic_class_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_class_diagram.mmd)
+* Vektor Diagram SVG: [`diagram.svg`](file:///home/zainun/Git/istn/sevima-mini/docs/adr/diagram.svg)
+* Screenshot Baseline v1.0: [`class-diagram-v1-baseline.png`](file:///home/zainun/Git/istn/sevima-mini/docs/adr/images/class-diagram-v1-baseline.png)
+* Screenshot Revisi v1.1: [`class-diagram-v2-payment.png`](file:///home/zainun/Git/istn/sevima-mini/docs/adr/images/class-diagram-v2-payment.png)
+

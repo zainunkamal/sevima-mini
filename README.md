@@ -4,13 +4,23 @@ Dokumen arsitektur dan perancangan berorientasi objek untuk sistem informasi aka
 
 ## 📁 Struktur Berkas
 
-* 📊 **Diagram UML Class (Mermaid):** [`academic_class_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_class_diagram.mmd)
-* 📑 **Dokumentasi ADR:** [`ADR-001: Desain Struktur Class Domain Akademik dan Relasi Entitas`](file:///home/zainun/Git/istn/sevima-mini/docs/adr/ADR-001-academic-system-class-structure.md)
-* 🎯 **Diagram UML Use Case (Mermaid):** [`academic_usecase_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_usecase_diagram.mmd)
-* 📑 **Spesifikasi Use Case:** [`USECASE-001: Spesifikasi & Diagram Use Case SIAKAD Mini`](file:///home/zainun/Git/istn/sevima-mini/docs/usecase/USECASE-001-academic-system.md)
-* 🔄 **Diagram UML Sequence PMB (Mermaid):** [`academic_pmb_sequence_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_pmb_sequence_diagram.mmd)
-* 🔄 **Diagram UML Sequence Validasi KRS (Mermaid):** [`academic_krs_sequence_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_krs_sequence_diagram.mmd)
-* 📑 **Spesifikasi Sequence:** [`SEQUENCE-001: Desain Sequence Diagram PMB dan Validasi KRS`](file:///home/zainun/Git/istn/sevima-mini/docs/sequence/SEQUENCE-001-pmb-and-krs.md)
+### 1. Diagram & Arsitektur Class
+* 📊 **Diagram UML Class (Mermaid):** [`diagrams/class-diagram.mmd`](diagrams/class-diagram.mmd)
+* 📑 **Dokumentasi ADR-001 (MD):** [`ADR-001: Desain Struktur Class Domain Akademik dan Relasi Entitas`](docs/adr/ADR-Markdown/ADR-001-academic-system-class-structure.md)
+* 📕 **Dokumentasi ADR-001 (PDF):** [`ADR-001-academic-system-class-structure.pdf`](docs/adr/ADR-001-academic-system-class-structure.pdf)
+
+### 2. Diagram & Arsitektur Use Case
+* 🎯 **Diagram UML Use Case (Mermaid):** [`diagrams/usecase-diagram.mmd`](diagrams/usecase-diagram.mmd)
+* 📑 **Spesifikasi Use Case (MD):** [`USECASE-001: Spesifikasi & Diagram Use Case SIAKAD Mini`](docs/usecase/USECASE-001-academic-system.md)
+* 📑 **Dokumentasi ADR-002 (MD):** [`ADR-002: Desain Use Case Sistem Informasi Akademik dan Relasi Include/Extend`](docs/adr/ADR-Markdown/ADR-002-academic-usecase-architecture.md)
+* 📕 **Dokumentasi ADR-002 (PDF):** [`ADR-002-academic-usecase-architecture.pdf`](docs/adr/ADR-002-academic-usecase-architecture.pdf)
+
+### 3. Diagram & Arsitektur Sequence
+* 🔄 **Diagram UML Sequence PMB (Mermaid):** [`diagrams/sequence-pmb.mmd`](diagrams/sequence-pmb.mmd)
+* 🔄 **Diagram UML Sequence Validasi KRS (Mermaid):** [`diagrams/sequence-krs.mmd`](diagrams/sequence-krs.mmd)
+* 📑 **Spesifikasi Sequence (MD):** [`SEQUENCE-001: Desain Sequence Diagram PMB dan Validasi KRS`](docs/sequence/SEQUENCE-001-pmb-and-krs.md)
+* 📑 **Dokumentasi ADR-003 (MD):** [`ADR-003: Desain Sequence Diagram PMB dan Validasi KRS Bertingkat`](docs/adr/ADR-Markdown/ADR-003-academic-sequence-flows.md)
+* 📕 **Dokumentasi ADR-003 (PDF):** [`ADR-003-academic-sequence-flows.pdf`](docs/adr/ADR-003-academic-sequence-flows.pdf)
 
 ## 📌 Ringkasan Prinsip & Pola Desain
 

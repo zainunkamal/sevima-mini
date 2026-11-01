@@ -13,8 +13,9 @@
 | **3** | Minggu 1 | Perancangan UML Use Case Diagram | Gemini 3.8 Flash | [`b9e493f`](https://github.com/zainunkamal/sevima-mini/commit/b9e493f) | Selesai (Diterima) |
 | **4** | Minggu 1 | Perancangan UML Sequence Diagram (PMB & KRS) | Gemini 3.8 Flash | [`eff27dc`](https://github.com/zainunkamal/sevima-mini/commit/eff27dc) | Selesai (Diterima) |
 | **5** | Minggu 1 | Dokumentasi ADR (ADR-002, ADR-003, PDF & Restrukturisasi) | Gemini 3.8 Flash | [`35d8ca6`](https://github.com/zainunkamal/sevima-mini/commit/35d8ca6) | Selesai (Diterima) |
-| **6** | Minggu 2 | Audit & Refactoring Class Diagram (OPAR) | Gemini 3.8 Flash | - | Selesai (Diterima) |
-| **7** | Minggu 2 | Refactoring Use Case Diagram & Standardisasi Dosen PA (OPAR) | Gemini 3.8 Flash | - | Selesai (Diterima) |
+| **6** | Minggu 2 | Audit & Refactoring Class Diagram (OPAR) | Gemini 3.8 Flash | [`52372f7`](https://github.com/zainunkamal/sevima-mini/commit/52372f7) | Selesai (Diterima) |
+| **7** | Minggu 2 | Refactoring Use Case Diagram & Standardisasi Dosen PA (OPAR) | Gemini 3.8 Flash | [`ad28839`](https://github.com/zainunkamal/sevima-mini/commit/ad28839) | Selesai (Diterima) |
+| **8** | Minggu 2 | Refactoring Sequence Diagram KRS Multi-Rule & Alt-Flows (OPAR) | Gemini 3.8 Flash | [`73781a2`](https://github.com/zainunkamal/sevima-mini/commit/73781a2) | Selesai (Diterima) |
 
 ---
 
@@ -129,7 +130,7 @@
 * **Minggu:** `2`
 * **Fitur:** Audit Konsistensi Antardiagram & Refactoring Class Diagram (SOLID & Strategy Pattern)
 * **LLM/Tool:** `Gemini 3.8 Flash`
-* **Kode AI awal:** Revisi [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd)
+* **Kode AI awal:** [`52372f7`](https://github.com/zainunkamal/sevima-mini/commit/52372f7)
 * **Revisi manual:** `-`
 * **Prompt Kunci:**
   ```text
@@ -181,7 +182,7 @@
 * **Minggu:** `2`
 * **Fitur:** Perbaikan Semantik Use Case, Pemisahan Peran Aktor Dosen, Penambahan 7 Use Case Baru, dan Standardisasi Istilah Dosen PA
 * **LLM/Tool:** `Gemini 3.8 Flash`
-* **Kode AI awal:** Revisi [`diagrams/usecase-diagram.mmd`](../diagrams/usecase-diagram.mmd), [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd), dan [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd)
+* **Kode AI awal:** [`ad28839`](https://github.com/zainunkamal/sevima-mini/commit/ad28839)
 * **Revisi manual:** `-`
 * **Prompt Kunci:**
   ```text
@@ -219,3 +220,52 @@
   * Diagram Use Case Mermaid yang telah diperbaiki: [`diagrams/usecase-diagram.mmd`](../diagrams/usecase-diagram.mmd).
   * Diagram Class Mermaid yang telah distandarisasi: [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd).
   * Diagram Sequence KRS Mermaid yang telah distandarisasi: [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd).
+
+---
+
+### 🔹 Log 08: Refactoring Sequence Diagram KRS Multi-Rule & Alternate Flows Berbasis OPAR (Observe, Plan, Act, Reflect)
+* **Minggu:** `2`
+* **Fitur:** Penyempurnaan Sequence Diagram KRS dengan Alur Multi-Rule Validation, Alternate Flows Komprehensif, dan Konsistensi Penuh Class Diagram
+* **LLM/Tool:** `Gemini 3.8 Flash`
+* **Kode AI awal:** [`73781a2`](https://github.com/zainunkamal/sevima-mini/commit/73781a2)
+* **Revisi manual:** `-`
+* **Prompt Kunci:**
+  ```text
+  "dari yang diatas saya mau menambahkan
+  Alur: submit KRS -> cek pembayaran -> loop ValidationRule (prasyarat, SKS <= 24, jadwal bentrok,
+  double enrollment) -> status "Pending Approval" -> notifikasi ke Dosen PA.
+  Wajib alt flow: tiap rule gagal, masa KRS ditutup, kapasitas penuh, error database.
+  Gunakan nama class dan method persis dari class diagram."
+  ```
+* **Metodologi OPAR:**
+  * 👁️ **Observe (Observasi):**
+    * Diagram sequence KRS sebelumnya belum memvisualisasikan seluruh alur alternatif (*alternate flows*) kritis secara granular, khususnya saat masa KRS ditutup, kapasitas kelas penuh, masing-masing rule validasi gagal, dan kegagalan transaksi basis data (*database exception*).
+    * Class diagram sebelumnya baru memiliki 3 rule akademik (`PrerequisiteRule`, `SksLimitRule`, `ScheduleConflictRule`) dan 1 rule pembayaran (`PaymentValidationRule`), namun belum memiliki aturan eksplisit untuk pencegahan pendaftaran ganda (`DoubleEnrollmentRule`).
+    * Alur pengiriman notifikasi persetujuan perlu menargetkan secara tepat ke `Dosen PA` melalui integrasi `Mahasiswa.getDosenPA()`, `NotificationService.kirimNotifikasi()`, dan pola Observer `IEnrollmentObserver.onEnrollmentStatusChanged()`.
+  * 📋 **Plan (Rencana):**
+    * Menambahkan class `DoubleEnrollmentRule` yang mengimplementasikan `ValidationRule` ke dalam [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd) dan use case `UC_CekDuplikasi` ke dalam [`diagrams/usecase-diagram.mmd`](../diagrams/usecase-diagram.mmd).
+    * Menyusun ulang [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd) menjadi 8 tahapan kronologis terstruktur:
+      1. Submit KRS & validasi kelayakan periode (Alt Flow: Masa KRS Ditutup).
+      2. Cek pembayaran via `PaymentValidationRule.validate(krs, mahasiswa)` (Alt Flow: Tagihan SPP Belum Lunas).
+      3. Cek kuota kapasitas kelas via `Schedule.getKapasitas()` (Alt Flow: Kuota Kapasitas Kelas Penuh).
+      4. Loop evaluasi `ValidationRule` (Strategy Pattern) mencakup:
+         - `PrerequisiteRule` (Alt Flow: Prasyarat Matakuliah Gagal).
+         - `SksLimitRule` max 24 SKS (Alt Flow: Beban SKS Melebihi Batas).
+         - `ScheduleConflictRule` (Alt Flow: Jadwal Kuliah Bentrok).
+         - `DoubleEnrollmentRule` (Alt Flow: Matakuliah Duplikat).
+      5. Penetapan status KRS dan Enrollment menjadi `"PENDING_APPROVAL"`.
+      6. Persistensi ke database via `DB.simpanKRS(krs)` (Alt Flow: Terjadi Error Database).
+      7. Notifikasi ke Dosen PA via `NotificationService.kirimNotifikasi(dosenPA, ...)` dan `broadcastKRSUpdate(krs, "PENDING_APPROVAL")`.
+      8. Review dan evaluasi persetujuan oleh Dosen PA (`approveKRS` vs `rejectKRS`).
+    * Memastikan setiap nama class, participant, dan pemanggilan method 100% identik dengan method signature pada class diagram.
+  * ⚡ **Act (Tindakan / Aksi):**
+    * Mengimplementasikan `DoubleEnrollmentRule` pada class diagram.
+    * Menulis ulang `diagrams/sequence-krs.mmd` dengan blok `alt...else...end` dan `loop` sesuai seluruh alur utama dan alternatif yang diwajibkan.
+    * Memvalidasi sintaks diagram menggunakan `@mermaid-js/mermaid-cli` dan mengekspor visualisasi SVG terbaru ke `docs/sequence/krs_sequence_diagram.svg`.
+  * 💡 **Reflect (Refleksi):**
+    * Sequence diagram kini mencerminkan penanganan kondisi galat secara defensif (*defensive programming* & *fail-fast architecture*), mencegah inkonsistensi status pada data akademik.
+    * Penggunaan Strategy Pattern `ValidationRule` terbukti modular dan fleksibel dalam sequence flow, di mana orkestrator `KRSService` mengeksekusi polymorphic loop tanpa perlu kopling ketat ke detail implementasi aturan individual.
+    * Sinkronisasi nama class, interface, method signature, dan observer event antara Class Diagram, Use Case Diagram, dan Sequence Diagram mencapai derajat kecocokan 100% (*zero discrepancy*).
+* **Hasil / Luaran:**
+  * Diagram Sequence KRS Mermaid yang diperbarui: [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd).
+  * File visualisasi SVG: [`docs/sequence/krs_sequence_diagram.svg`](../docs/sequence/krs_sequence_diagram.svg).

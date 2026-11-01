@@ -48,6 +48,10 @@ classDiagram
         +validate(krs: KRS, mahasiswa: Mahasiswa) bool
     }
 
+    class DoubleEnrollmentRule {
+        +validate(krs: KRS, mahasiswa: Mahasiswa) bool
+    }
+
     %% =========================================================================
     %% BASE & SUBCLASSES: USER & ACTORS (SRP & LSP)
     %% =========================================================================
@@ -227,6 +231,7 @@ classDiagram
         -List~ValidationRule~ validationRules
         -NotificationService notificationService
         +cekKelayakanPengisianKRS(nim: string, semester: int) bool
+        +getDetailKRS(nim: string, semester: int) KRS
         +prosesPengajuanKRS(krs: KRS) bool
         +validasiKRS(krs: KRS, mahasiswa: Mahasiswa) bool
         +approveKRS(krs: KRS, dosenPA: Dosen) void
@@ -274,6 +279,7 @@ classDiagram
     SksLimitRule ..|> ValidationRule
     ScheduleConflictRule ..|> ValidationRule
     PaymentValidationRule ..|> ValidationRule
+    DoubleEnrollmentRule ..|> ValidationRule
 
     %% Generalizations (<|--)
     User <|-- Mahasiswa
@@ -320,3 +326,4 @@ classDiagram
     PaymentValidationRule ..> Payment : memvalidasi tagihan
     PrerequisiteRule ..> Course : memvalidasi prasyarat
     ScheduleConflictRule ..> Schedule : memvalidasi bentrok jadwal
+    DoubleEnrollmentRule ..> Enrollment : memvalidasi duplikasi

@@ -3,7 +3,7 @@
 * **Status:** Diterima (*Accepted*)
 * **Tanggal:** 2026-11-01
 * **Penyusun:** Arsitek Sistem (*System Architect*)
-* **Konteks Sistem:** Platform Akademik Kampus (*Academic Information System / SIAKAD Mini*)
+* **Konteks Sistem:** Platform Akademik Kampus (*Academic Information System / SEVIMA-Mini*)
 
 ---
 
@@ -17,7 +17,7 @@ Sistem Informasi Akademik kampus memerlukan dekomposisi fungsionalitas yang jela
 
 Tantangan pemodelan fungsional meliputi:
 * Menghindari *use case bloat* (terlalu banyak use case mikro yang mengaburkan tujuan pengguna).
-* Menentukan batasan fungsional (*system boundary*) yang jelas antara portal internal SIAKAD dan sistem eksternal PMB.
+* Menentukan batasan fungsional (*system boundary*) yang jelas antara portal internal SEVIMA-Mini dan sistem eksternal PMB.
 * Menerapkan relasi **`<<include>>`** dan **`<<extend>>`** secara presisi sesuai standar UML 2.5 untuk membedakan alur mutlak (*mandatory*) dan alur kondisional/ekstensi (*optional/conditional*).
 
 ---
@@ -89,7 +89,7 @@ Arah panah UML: `Extending Use Case -. "<<extend>>" .-> Base Use Case`.
 ## 3. Pertimbangan & Trade-off (Consequences)
 
 ### 3.1 Integrasi Sistem PMB (Loosely Coupled via Sync)
-* **Kelebihan:** Sistem SIAKAD inti tidak terbebani oleh tingginya *traffic* seleksi pendaftar yang tidak lolos seleksi.
+* **Kelebihan:** Sistem SEVIMA-Mini inti tidak terbebani oleh tingginya *traffic* seleksi pendaftar yang tidak lolos seleksi.
 * **Trade-off:** Memerlukan mekanisme sinkronisasi data yang andal untuk mencegah inkonsistensi saat penerbitan NIM mahasiswa baru.
 
 ### 3.2 Granularitas Relasi `<<include>>` pada KRS

@@ -2,11 +2,11 @@ sequenceDiagram
     autonumber
     actor Calon as 👤 Calon Mahasiswa
     participant Portal as 🌐 Portal PMB
-    participant PMBService as ⚙️ PMB Controller
-    participant Storage as 📁 Document Storage
+    participant PMBService as ⚙️ Layanan PMB (PMBService)
+    participant Storage as 📁 Penyimpanan Berkas (Storage)
     actor Admin as 👨‍💼 Admin Admisi
     participant Factory as 🏭 UserFactory
-    participant DB as 🗄️ Database SIAKAD
+    participant DB as 🗄️ Database SEVIMA-Mini
 
     Note over Calon,Portal: Tahap 1: Registrasi & Pengisian Berkas Pendaftaran
     Calon->>Portal: Akses formulir pendaftaran & pilih Program Studi
@@ -44,4 +44,4 @@ sequenceDiagram
     Factory-->>PMBService: Objek Mahasiswa baru
     PMBService->>DB: simpanMahasiswaBaru(Mahasiswa)
     DB-->>PMBService: Mahasiswa tersimpan resmi
-    PMBService-->>Calon: Notifikasi Penerimaan & Informasi Akun SIAKAD (NIM & Password)
+    PMBService-->>Calon: Notifikasi Penerimaan & Informasi Akun SEVIMA-Mini (NIM & Password)

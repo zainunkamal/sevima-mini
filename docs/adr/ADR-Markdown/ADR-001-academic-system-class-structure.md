@@ -3,7 +3,7 @@
 * **Status:** Diterima (*Accepted*)
 * **Tanggal:** 2026-11-01
 * **Penyusun:** Arsitek Sistem (System Architect)
-* **Konteks Sistem:** Platform Akademik Kampus (*Academic Information System / SIAKAD Mini*)
+* **Konteks Sistem:** Platform Akademik Kampus (*Academic Information System / SEVIMA-Mini*)
 
 ---
 

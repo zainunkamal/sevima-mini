@@ -18,6 +18,7 @@
 | **8** | Minggu 2 | Refactoring Sequence Diagram KRS Multi-Rule & Alt-Flows (OPAR) | Gemini 3.8 Flash | [`73781a2`](https://github.com/zainunkamal/sevima-mini/commit/73781a2) | Selesai (Diterima) |
 | **9** | Minggu 2 | Refactoring Sequence Diagram PMB Multi-Alt-Flows & Pemisahan NIMGenerator (OPAR) | Gemini 3.8 Flash | [`2ec94c1`](https://github.com/zainunkamal/sevima-mini/commit/2ec94c1) | Selesai (Diterima) |
 | **10** | Minggu 2 | Hardening Sequence Diagram KRS: Concurrency, ACID & Async Lifecycle (OPAR) | Gemini 3.8 Flash | [`4f04535`](https://github.com/zainunkamal/sevima-mini/commit/4f04535) | Selesai (Diterima) |
+| **11** | Minggu 2 | Sinkronisasi & Pembaruan Komprehensif Dokumentasi ADR (ADR-001, ADR-002, ADR-003) | Gemini 3.8 Flash | [`459cf7e`](https://github.com/zainunkamal/sevima-mini/commit/459cf7e) | Selesai (Diterima) |
 
 ---
 
@@ -365,3 +366,41 @@
   * Diagram Class Mermaid yang diperbarui: [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd).
   * Diagram Sequence KRS Mermaid yang diperbarui: [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd).
   * File visualisasi SVG: [`docs/sequence/krs_sequence_diagram.svg`](../docs/sequence/krs_sequence_diagram.svg).
+
+---
+
+### 🔹 Log 11: Pembaruan Komprehensif Dokumentasi ADR (ADR-001, ADR-002, ADR-003) Berbasis OPAR (Observe, Plan, Act, Reflect)
+* **Minggu:** `2`
+* **Fitur:** Sinkronisasi menyeluruh dokumentasi Architectural Decision Record (ADR-001, ADR-002, ADR-003) beserta kompilasi ulang artefak PDF
+* **LLM/Tool:** `Gemini 3.8 Flash`
+* **Kode AI awal:** [`459cf7e`](https://github.com/zainunkamal/sevima-mini/commit/459cf7e)
+* **Revisi manual:** `-`
+* **Prompt Kunci:**
+  ```text
+  "Update dokumentasi ADF dengan revisian yang sudah dibuat"
+  ```
+* **Metodologi OPAR:**
+  * 👁️ **Observe (Observasi):**
+    * Dokumentasi ADR sebelumnya belum merefleksikan revisi arsitektur v2.1:
+      * `ADR-001` belum mencakup domain core baru (`KRS`, `KRSService`, `PMBService`, `NotificationService`, `ProgramStudi`, `NIMGenerator`), 5 aturan validasi *Strategy Pattern*, metode reservasi atomik `Schedule.reserveKapasitas()`, serta matriks perbandingan evolusi 4 diagram.
+      * `ADR-002` masih merujuk asosiasi lama (`Daftar Kuliah` ke `Mahasiswa`, `Generate Transkrip` ke `Dosen`, `Sanggah Nilai` ke `Input Nilai`), belum membedakan `Dosen PA` vs `Dosen Pengajar`, belum menyertakan aktor `Calon Mahasiswa`, dan belum memuat 8 use case baru yang muncul di alur sekuensial.
+      * `ADR-003` belum memuat 4 alternate flow PMB, pemisahan `NIMGenerator` dari `UserFactory` (SRP), alur keamanan aktivasi tanpa kata sandi teks polos, 5 alternate flow KRS, proteksi konkurensi kapasitas kelas (`reserveKapasitas`/`releaseKapasitas`), cakupan transaksi database ACID (`beginTransaction`/`commit`/`rollback`), dan pemisahan sesi asinkron Dosen PA.
+    * Berkas PDF lama di `docs/adr/` sudah usang dan tidak sinkron dengan diagram Mermaid aktif.
+  * 📋 **Plan (Rencana):**
+    * Menulis ulang `docs/adr/ADR-Markdown/ADR-001-academic-system-class-structure.md` dengan menyertakan tabel struktur class v2.1, relasi composition vs aggregation, prinsip SOLID, design patterns, mitigasi konkurensi, matriks evolusi arsitektur, dan referensi visual diagram per versi.
+    * Memperbarui `docs/adr/ADR-Markdown/ADR-002-academic-usecase-architecture.md` dengan dekomposisi aktor (`Calon Mahasiswa`, `Mahasiswa`, `Dosen PA`, `Dosen Pengajar`, `Admin`, `Sistem PMB`), tabel matriks use case lengkap (termasuk 8 use case baru), rationale relasi `<<include>>` dan `<<extend>>` yang telah dikoreksi, serta analisis trade-off.
+    * Memperbarui `docs/adr/ADR-Markdown/ADR-003-academic-sequence-flows.md` dengan dokumentasi terperinci 4 tahapan PMB (beserta 4 alternate flows dan tautan aktivasi) serta 7 tahapan KRS (beserta 5 alternate flows, reservasi atomik, scope transaksi database, dan pemisahan sesi approval Dosen PA).
+    * Mengkompilasi ulang seluruh dokumen ADR menjadi berkas PDF resmi di `docs/adr/` menggunakan `md-to-pdf` dengan flag sandbox Puppeteer.
+    * Melakukan commit ke Git dan mencatat ke dalam log penggunaan AI.
+  * ⚡ **Act (Tindakan / Aksi):**
+    * Memperbarui ketiga file markdown ADR di `docs/adr/ADR-Markdown/`.
+    * Mengkompilasi ulang `ADR-001-academic-system-class-structure.pdf`, `ADR-002-academic-usecase-architecture.pdf`, dan `ADR-003-academic-sequence-flows.pdf` ke direktori `docs/adr/`.
+    * Memverifikasi konsistensi nama class, method, aktor, dan relasi terhadap `diagrams/*.mmd`.
+    * Meng-commit berkas dengan pesan: `docs(adr): update ADR-001, ADR-002, and ADR-003 with complete v2.1 architecture revisions and regenerate PDFs` (`459cf7e`).
+  * 💡 **Reflect (Refleksi):**
+    * Seluruh dokumentasi arsitektur (ADR-001, ADR-002, dan ADR-003) kini berada dalam status 100% konsisten dan tersinkronisasi penuh dengan diagram UML aktif (`class-diagram.mmd`, `usecase-diagram.mmd`, `sequence-krs.mmd`, `sequence-pmb.mmd`).
+    * Rekaman riwayat evolusi perancangan terdokumentasi secara transparan dan terukur, memenuhi standar dokumentasi rekayasa perangkat lunak skala enterprise.
+* **Hasil / Luaran:**
+  * Dokumen ADR-001: [`docs/adr/ADR-Markdown/ADR-001-academic-system-class-structure.md`](../docs/adr/ADR-Markdown/ADR-001-academic-system-class-structure.md) & PDF: [`docs/adr/ADR-001-academic-system-class-structure.pdf`](../docs/adr/ADR-001-academic-system-class-structure.pdf).
+  * Dokumen ADR-002: [`docs/adr/ADR-Markdown/ADR-002-academic-usecase-architecture.md`](../docs/adr/ADR-Markdown/ADR-002-academic-usecase-architecture.md) & PDF: [`docs/adr/ADR-002-academic-usecase-architecture.pdf`](../docs/adr/ADR-002-academic-usecase-architecture.pdf).
+  * Dokumen ADR-003: [`docs/adr/ADR-Markdown/ADR-003-academic-sequence-flows.md`](../docs/adr/ADR-Markdown/ADR-003-academic-sequence-flows.md) & PDF: [`docs/adr/ADR-003-academic-sequence-flows.pdf`](../docs/adr/ADR-003-academic-sequence-flows.pdf).

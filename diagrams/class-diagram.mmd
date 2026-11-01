@@ -1,7 +1,9 @@
 classDiagram
     direction TB
 
-    %% Interfaces (ISP & DIP)
+    %% =========================================================================
+    %% INTERFACES (ISP & DIP)
+    %% =========================================================================
     class IAuthenticatable {
         <<interface>>
         +login(credentials: string) bool
@@ -21,7 +23,34 @@ classDiagram
         +onGradeUpdated(enrollment: Enrollment, grade: Grade) void
     }
 
-    %% Base Class (SRP & LSP)
+    class ValidationRule {
+        <<interface>>
+        +validate(krs: KRS, mahasiswa: Mahasiswa) bool
+    }
+
+    %% =========================================================================
+    %% STRATEGY PATTERN: VALIDATION RULES (KRS VALIDATION)
+    %% =========================================================================
+    class PrerequisiteRule {
+        +validate(krs: KRS, mahasiswa: Mahasiswa) bool
+    }
+
+    class SksLimitRule {
+        -int maxSks
+        +validate(krs: KRS, mahasiswa: Mahasiswa) bool
+    }
+
+    class ScheduleConflictRule {
+        +validate(krs: KRS, mahasiswa: Mahasiswa) bool
+    }
+
+    class PaymentValidationRule {
+        +validate(krs: KRS, mahasiswa: Mahasiswa) bool
+    }
+
+    %% =========================================================================
+    %% BASE & SUBCLASSES: USER & ACTORS (SRP & LSP)
+    %% =========================================================================
     class User {
         <<abstract>>
         #string id
@@ -34,15 +63,17 @@ classDiagram
         +getEmail() string
     }
 
-    %% Subclasses dari User
     class Mahasiswa {
         -string nim
         -int semester
         -string statusAkademik
         -float ipk
+        -Dosen dosenWali
         +getNim() string
-        +isiKRS(courses: List~Course~) List~Enrollment~
-        +lihatKRS() List~Enrollment~
+        +getDosenWali() Dosen
+        +setDosenWali(dosen: Dosen) void
+        +isiKRS(krs: KRS) void
+        +lihatKRS() List~KRS~
         +lihatKHS() List~Grade~
         +cekStatusPembayaran(semester: int) bool
         +lihatRiwayatPembayaran() List~Payment~
@@ -56,6 +87,9 @@ classDiagram
         +getNidn() string
         +inputNilai(enrollment: Enrollment, grade: Grade) void
         +lihatJadwalMengajar() List~Schedule~
+        +validasiKRS(krs: KRS, persetujuan: bool, catatan: string) void
+        +onEnrollmentStatusChanged(enrollment: Enrollment, newStatus: string) void
+        +onGradeUpdated(enrollment: Enrollment, grade: Grade) void
     }
 
     class Admin {
@@ -74,12 +108,30 @@ classDiagram
         +cekStatusPendaftaran() string
     }
 
-    %% Factory Pattern
+    %% =========================================================================
+    %% CREATIONAL & AUXILIARY PATTERNS
+    %% =========================================================================
+    class NIMGenerator {
+        +generateNIM(prodi: ProgramStudi, tahunMasuk: int) string
+    }
+
     class UserFactory {
+        -NIMGenerator nimGenerator
         +createUser(role: string, data: Map) User
     }
 
-    %% Academic Domain Core
+    %% =========================================================================
+    %% ACADEMIC & INSTITUTION DOMAIN CORE
+    %% =========================================================================
+    class ProgramStudi {
+        -string kodeProdi
+        -string namaProdi
+        -string jenjang
+        +getKodeProdi() string
+        +getNamaProdi() string
+        +getJenjang() string
+    }
+
     class Course {
         -string kode
         -string nama
@@ -100,17 +152,37 @@ classDiagram
         +getHari() string
         +getJam() string
         +getRuangan() string
+        +getKapasitas() int
         +cekBentrok(other: Schedule) bool
+    }
+
+    class KRS {
+        -string idKrs
+        -int semester
+        -int tahunAkademik
+        -string status
+        -int totalSks
+        +getIdKrs() string
+        +getSemester() int
+        +getTahunAkademik() int
+        +getStatus() string
+        +setStatus(status: string) void
+        +tambahEnrollment(enrollment: Enrollment) bool
+        +batalkanEnrollment(idEnrollment: string) void
+        +hitungTotalSks() int
+        +getEnrollments() List~Enrollment~
     }
 
     class Enrollment {
         -string idEnrollment
+        -int semester
         -DateTime tanggalDaftar
         -string status
         -List~IEnrollmentObserver~ observers
         +getIdEnrollment() string
+        +getSemester() int
         +getStatus() string
-        +validasiSyaratPembayaran(payment: Payment) bool
+        +setStatus(status: string) void
         +batalkanEnrollment() void
         +getGrade() Grade
         +attachObserver(observer: IEnrollmentObserver) void
@@ -129,7 +201,9 @@ classDiagram
         +updateNilai(tugas: float, uts: float, uas: float) void
     }
 
-    %% Financial / Payment Domain Core
+    %% =========================================================================
+    %% FINANCIAL / PAYMENT DOMAIN CORE
+    %% =========================================================================
     class Payment {
         -string idPayment
         -float jumlah
@@ -146,7 +220,36 @@ classDiagram
         +konfirmasiPembayaran() bool
     }
 
-    %% Concrete Strategies (Strategy Pattern)
+    %% =========================================================================
+    %% SERVICE LAYER (ORCHESTRATION & NOTIFICATION)
+    %% =========================================================================
+    class KRSService {
+        -List~ValidationRule~ validationRules
+        -NotificationService notificationService
+        +cekKelayakanPengisianKRS(nim: string, semester: int) bool
+        +prosesPengajuanKRS(krs: KRS) bool
+        +validasiKRS(krs: KRS, mahasiswa: Mahasiswa) bool
+        +approveKRS(krs: KRS, dosenWali: Dosen) void
+        +rejectKRS(krs: KRS, dosenWali: Dosen, catatan: string) void
+    }
+
+    class PMBService {
+        -UserFactory userFactory
+        -NotificationService notificationService
+        +submitPendaftaran(calon: CalonMahasiswa, prodi: ProgramStudi) string
+        +uploadBerkas(noPendaftaran: string, berkasPath: string) bool
+        +verifikasiBerkas(noPendaftaran: string, status: string) void
+        +sinkronisasiMahasiswaBaru(calon: CalonMahasiswa) Mahasiswa
+    }
+
+    class NotificationService {
+        +kirimNotifikasi(penerima: User, pesan: string) void
+        +broadcastKRSUpdate(krs: KRS, status: string) void
+    }
+
+    %% =========================================================================
+    %% STRATEGY PATTERN: GRADE EVALUATORS
+    %% =========================================================================
     class StandardGradeEvaluator {
         +calculateFinalScore(grade: Grade) float
         +convertToLetterGrade(score: float) string
@@ -157,29 +260,63 @@ classDiagram
         +convertToLetterGrade(score: float) string
     }
 
-    %% Relationships
+    %% =========================================================================
+    %% RELATIONSHIPS & ASSOCIATIONS
+    %% =========================================================================
+    %% Interface Realizations (..|>)
     User ..|> IAuthenticatable
     Mahasiswa ..|> IEnrollmentObserver
+    Dosen ..|> IEnrollmentObserver
     StandardGradeEvaluator ..|> IGradeEvaluator
     PracticumGradeEvaluator ..|> IGradeEvaluator
 
+    PrerequisiteRule ..|> ValidationRule
+    SksLimitRule ..|> ValidationRule
+    ScheduleConflictRule ..|> ValidationRule
+    PaymentValidationRule ..|> ValidationRule
+
+    %% Generalizations (<|--)
     User <|-- Mahasiswa
     User <|-- Dosen
     User <|-- Admin
     User <|-- CalonMahasiswa
 
+    %% Factory & Creational
     UserFactory ..> User : instantiates
+    UserFactory ..> NIMGenerator : delegates
 
-    %% Composition (*--) - Strong lifecycle coupling
-    Enrollment "1" *-- "1" Grade : contains
-    Course "1" *-- "1..*" Schedule : defines
+    %% Program Studi Relations
+    ProgramStudi "1" o-- "0..*" Mahasiswa : menaungi
+    ProgramStudi "1" o-- "0..*" Course : menyelenggarakan
+    CalonMahasiswa ..> ProgramStudi : memilih
 
-    %% Aggregation (o--) - Weak lifecycle coupling
-    Course "0..*" o-- "0..*" Course : prasyarat
-    Mahasiswa "1" o-- "0..*" Enrollment : registers
+    %% Student, Advisor & Study Plan Relations
+    Mahasiswa "0..*" --> "1" Dosen : dosenWali
+    Mahasiswa "1" *-- "0..*" KRS : memiliki
     Mahasiswa "1" o-- "0..*" Payment : pays
+
+    %% KRS & Enrollment Composition
+    KRS "1" *-- "1..*" Enrollment : memuat
+    Enrollment "1" *-- "1" Grade : contains
+    Enrollment "0..*" o-- "1" Schedule : mengikuti jadwal
+    Course "1" *-- "1..*" Schedule : defines
     Course "1" o-- "0..*" Enrollment : offers
+    Course "0..*" o-- "0..*" Course : prasyarat
     Dosen "1" o-- "0..*" Course : teaches
     Enrollment "0..*" o-- "0..*" IEnrollmentObserver : observes
     Enrollment ..> IGradeEvaluator : delegates evaluation
-    Enrollment ..> Payment : validates prerequisite
+
+    %% Services & Orchestration Dependencies
+    KRSService ..> KRS : orkestrasi
+    KRSService o-- "1..*" ValidationRule : executes
+    KRSService ..> NotificationService : notifies
+
+    PMBService ..> CalonMahasiswa : mengelola
+    PMBService ..> UserFactory : uses
+    PMBService ..> ProgramStudi : assigns
+    PMBService ..> NotificationService : notifies
+
+    %% Strategy Rules Dependencies
+    PaymentValidationRule ..> Payment : validates status
+    PrerequisiteRule ..> Course : checks prerequisite
+    ScheduleConflictRule ..> Schedule : checks conflict

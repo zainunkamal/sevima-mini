@@ -5,22 +5,29 @@ flowchart LR
     classDef included fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px,stroke-dasharray: 4 2,color:#4a148c;
     classDef extended fill:#fff3e0,stroke:#e65100,stroke-width:1.5px,stroke-dasharray: 4 2,color:#bf360c;
 
-    %% Aktor Kiri (Mahasiswa & Sistem PMB)
+    %% Aktor Kiri (Pendaftar, Mahasiswa & Sistem PMB)
     subgraph Aktor_Kiri [" "]
         direction TB
+        CALON["👤 Calon Mahasiswa"]:::actor
         MHS["👤 Mahasiswa"]:::actor
         PMB["🏢 Sistem PMB<br/><i>(Sistem Eksternal)</i>"]:::actor
     end
     style Aktor_Kiri fill:none,stroke:none
 
     %% Batasan Sistem (System Boundary)
-    subgraph SIAKAD ["🏛️ Sistem Informasi Akademik (SIAKAD Mini)"]
+    subgraph SEVIMA_Mini ["🏛️ Platform Akademik (SEVIMA-Mini)"]
         direction TB
+
+        subgraph Modul_Auth ["Modul Autentikasi & Akun"]
+            UC_Login(["Autentikasi / Login"]):::usecase
+        end
 
         subgraph Modul_PMB ["Modul Registrasi & Admisi"]
             UC_Daftar(["Daftar Kuliah"]):::usecase
             UC_UploadBerkas(["Unggah Berkas Persyaratan"]):::included
+            UC_VerifikasiSeleksi(["Verifikasi Berkas & Seleksi"]):::usecase
             UC_SinkronPMB(["Sinkronisasi Data Mahasiswa"]):::usecase
+            UC_GenerateNIM(["Generate NIM Mahasiswa Baru"]):::included
         end
 
         subgraph Modul_Keuangan ["Modul Keuangan"]
@@ -31,7 +38,10 @@ flowchart LR
 
         subgraph Modul_KRS ["Modul Rencana Studi (KRS)"]
             UC_IsiKRS(["Isi KRS"]):::usecase
+            UC_CekBayarKRS(["Validasi Status Pembayaran"]):::included
             UC_CekPrasyarat(["Validasi Prasyarat Mata Kuliah"]):::included
+            UC_CekBatasSKS(["Validasi Batas Beban SKS"]):::included
+            UC_CekBentrokJadwal(["Validasi Bentrok Jadwal"]):::included
             UC_BatalTambah(["Revisi / Batal-Tambah KRS"]):::extended
             UC_CetakKRS(["Cetak Bukti KRS"]):::extended
             UC_ApproveKRS(["Validasi & Persetujuan KRS"]):::usecase
@@ -41,61 +51,85 @@ flowchart LR
         subgraph Modul_Nilai ["Modul Penilaian & Hasil Studi"]
             UC_InputNilai(["Input Nilai Mahasiswa"]):::usecase
             UC_HitungNilai(["Kalkulasi Nilai Akhir & Mutu"]):::included
-            UC_SanggahNilai(["Proses Sanggah Nilai"]):::extended
             UC_LihatKHS(["Lihat Kartu Hasil Studi (KHS)"]):::usecase
+            UC_SanggahNilai(["Proses Sanggah Nilai"]):::extended
             UC_GenTranskrip(["Generate Transkrip Nilai"]):::usecase
             UC_HitungIPK(["Kalkulasi IPK & SKS Kumulatif"]):::included
             UC_ExportTranskrip(["Export Transkrip Resmi (PDF)"]):::extended
         end
 
         subgraph Modul_Admin ["Modul Administrasi Akademik"]
+            UC_LihatJadwal(["Lihat Jadwal Kuliah"]):::usecase
             UC_KelolaKurikulum(["Kelola Kurikulum & Mata Kuliah"]):::usecase
             UC_KelolaJadwal(["Kelola Alokasi Jadwal"]):::usecase
             UC_KelolaUser(["Kelola Data Pengguna"]):::usecase
+        end
+
+        subgraph Modul_Notifikasi ["Layanan Pendukung"]
+            UC_KirimNotifikasi(["Kirim Notifikasi Real-time"]):::included
         end
     end
 
     %% Aktor Kanan (Dosen & Admin)
     subgraph Aktor_Kanan [" "]
         direction TB
-        DSN["👨‍🏫 Dosen<br/><i>(Pengajar & Dosen Wali)</i>"]:::actor
+        DSN_PA["👨‍🏫 Dosen PA<br/><i>(Pembimbing Akademik)</i>"]:::actor
+        DSN_Pengajar["👨‍🏫 Dosen Pengajar"]:::actor
         ADM["👨‍💼 Admin<br/><i>(Administrator Sistem)</i>"]:::actor
     end
     style Aktor_Kanan fill:none,stroke:none
 
-    %% Relasi Asosiasi Aktor Mahasiswa
-    MHS --- UC_Daftar
+    %% Relasi Asosiasi Calon Mahasiswa
+    CALON --- UC_Daftar
+
+    %% Relasi Asosiasi Mahasiswa
+    MHS --- UC_Login
     MHS --- UC_Bayar
     MHS --- UC_IsiKRS
+    MHS --- UC_LihatJadwal
     MHS --- UC_LihatKHS
+    MHS --- UC_SanggahNilai
     MHS --- UC_GenTranskrip
 
-    %% Relasi Asosiasi Aktor Sistem PMB
+    %% Relasi Asosiasi Sistem PMB
     PMB --- UC_Daftar
     PMB --- UC_SinkronPMB
 
-    %% Relasi Asosiasi Aktor Dosen
-    DSN --- UC_ApproveKRS
-    DSN --- UC_InputNilai
-    DSN --- UC_GenTranskrip
+    %% Relasi Asosiasi Dosen PA
+    DSN_PA --- UC_Login
+    DSN_PA --- UC_ApproveKRS
 
-    %% Relasi Asosiasi Aktor Admin
+    %% Relasi Asosiasi Dosen Pengajar
+    DSN_Pengajar --- UC_Login
+    DSN_Pengajar --- UC_InputNilai
+    DSN_Pengajar --- UC_LihatJadwal
+    DSN_Pengajar --- UC_SanggahNilai
+
+    %% Relasi Asosiasi Admin
+    ADM --- UC_Login
+    ADM --- UC_VerifikasiSeleksi
     ADM --- UC_SinkronPMB
+    ADM --- UC_GenTranskrip
     ADM --- UC_KelolaKurikulum
     ADM --- UC_KelolaJadwal
     ADM --- UC_KelolaUser
 
-    %% Relasi <<include>> (Base UC -> Included UC)
+    %% Relasi <<include>>
     UC_Daftar -. "<<include>>" .-> UC_UploadBerkas
-    UC_IsiKRS -. "<<include>>" .-> UC_CekBayar
+    UC_SinkronPMB -. "<<include>>" .-> UC_GenerateNIM
+    UC_IsiKRS -. "<<include>>" .-> UC_CekBayarKRS
     UC_IsiKRS -. "<<include>>" .-> UC_CekPrasyarat
+    UC_IsiKRS -. "<<include>>" .-> UC_CekBatasSKS
+    UC_IsiKRS -. "<<include>>" .-> UC_CekBentrokJadwal
     UC_InputNilai -. "<<include>>" .-> UC_HitungNilai
     UC_GenTranskrip -. "<<include>>" .-> UC_HitungIPK
+    UC_ApproveKRS -. "<<include>>" .-> UC_KirimNotifikasi
+    UC_TolakKRS -. "<<include>>" .-> UC_KirimNotifikasi
 
-    %% Relasi <<extend>> (Extending UC -> Base UC)
+    %% Relasi <<extend>>
     UC_Dispensasi -. "<<extend>>" .-> UC_Bayar
     UC_BatalTambah -. "<<extend>>" .-> UC_IsiKRS
     UC_CetakKRS -. "<<extend>>" .-> UC_IsiKRS
     UC_TolakKRS -. "<<extend>>" .-> UC_ApproveKRS
-    UC_SanggahNilai -. "<<extend>>" .-> UC_InputNilai
+    UC_SanggahNilai -. "<<extend>>" .-> UC_LihatKHS
     UC_ExportTranskrip -. "<<extend>>" .-> UC_GenTranskrip

@@ -68,10 +68,10 @@ classDiagram
         -int semester
         -string statusAkademik
         -float ipk
-        -Dosen dosenWali
+        -Dosen dosenPA
         +getNim() string
-        +getDosenWali() Dosen
-        +setDosenWali(dosen: Dosen) void
+        +getDosenPA() Dosen
+        +setDosenPA(dosen: Dosen) void
         +isiKRS(krs: KRS) void
         +lihatKRS() List~KRS~
         +lihatKHS() List~Grade~
@@ -229,8 +229,8 @@ classDiagram
         +cekKelayakanPengisianKRS(nim: string, semester: int) bool
         +prosesPengajuanKRS(krs: KRS) bool
         +validasiKRS(krs: KRS, mahasiswa: Mahasiswa) bool
-        +approveKRS(krs: KRS, dosenWali: Dosen) void
-        +rejectKRS(krs: KRS, dosenWali: Dosen, catatan: string) void
+        +approveKRS(krs: KRS, dosenPA: Dosen) void
+        +rejectKRS(krs: KRS, dosenPA: Dosen, catatan: string) void
     }
 
     class PMBService {
@@ -291,7 +291,7 @@ classDiagram
     CalonMahasiswa ..> ProgramStudi : memilih
 
     %% Student, Advisor & Study Plan Relations
-    Mahasiswa "0..*" --> "1" Dosen : dosen wali
+    Mahasiswa "0..*" --> "1" Dosen : dosen PA
     Mahasiswa "1" *-- "0..*" KRS : memiliki
     Mahasiswa "1" o-- "0..*" Payment : membayar
 

@@ -14,6 +14,7 @@
 | **4** | Minggu 1 | Perancangan UML Sequence Diagram (PMB & KRS) | Gemini 3.8 Flash | [`eff27dc`](https://github.com/zainunkamal/sevima-mini/commit/eff27dc) | Selesai (Diterima) |
 | **5** | Minggu 1 | Dokumentasi ADR (ADR-002, ADR-003, PDF & Restrukturisasi) | Gemini 3.8 Flash | [`35d8ca6`](https://github.com/zainunkamal/sevima-mini/commit/35d8ca6) | Selesai (Diterima) |
 | **6** | Minggu 2 | Audit & Refactoring Class Diagram (OPAR) | Gemini 3.8 Flash | - | Selesai (Diterima) |
+| **7** | Minggu 2 | Refactoring Use Case Diagram & Standardisasi Dosen PA (OPAR) | Gemini 3.8 Flash | - | Selesai (Diterima) |
 
 ---
 
@@ -173,3 +174,48 @@
     * Pemisahan Service Layer mengeliminasi anomali *God Class* pada `Mahasiswa` dan `Enrollment`, sehingga arsitektur menjadi jauh lebih modular, siap diimplementasikan ke kode produksi, dan mudah diuji (*unit testable*).
 * **Hasil / Luaran:**
   * Diagram Class Mermaid yang telah direvisi: [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd).
+
+---
+
+### 🔹 Log 07: Penyempurnaan Use Case Diagram & Standardisasi Dosen PA Berbasis OPAR (Observe, Plan, Act, Reflect)
+* **Minggu:** `2`
+* **Fitur:** Perbaikan Semantik Use Case, Pemisahan Peran Aktor Dosen, Penambahan 7 Use Case Baru, dan Standardisasi Istilah Dosen PA
+* **LLM/Tool:** `Gemini 3.8 Flash`
+* **Kode AI awal:** Revisi [`diagrams/usecase-diagram.mmd`](../diagrams/usecase-diagram.mmd), [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd), dan [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd)
+* **Revisi manual:** `-`
+* **Prompt Kunci:**
+  ```text
+  "bagaimana dengan permasalahan ini
+  - Daftar Kuliah dikaitkan ke aktor Mahasiswa, padahal yang mendaftar adalah calon mahasiswa. Di sequence PMB aktornya “Calon Mahasiswa”, jadi tidak sinkron. Tambahkan aktor Calon Mahasiswa, atau jelaskan bahwa itu generalisasi.
+  - Proses Sanggah Nilai meng-extend Input Nilai tidak masuk akal, karena sanggah dilakukan mahasiswa setelah nilai terbit. Lebih tepat extend ke Lihat KHS, dan beri asosiasi ke Mahasiswa.
+  - Generate Transkrip dikaitkan ke Dosen. Biasanya aktornya Mahasiswa dan Admin.
+  - Use case yang muncul di sequence tapi belum ada: Verifikasi Berkas & Seleksi, Generate NIM, Validasi Batas SKS, Cek Jadwal Bentrok (include dari Isi KRS), Login, Lihat Jadwal, dan Kirim Notifikasi.
+  - Istilah tidak konsisten: use case memakai “Dosen Wali”, dokumen dosen memakai “Dosen PA”. Pilih satu. Saya mau menggunakan Dosen PA"
+  
+  "ya, setuju, terus jangan lupa masukin ke ai-usage-log"
+  ```
+* **Metodologi OPAR:**
+  * 👁️ **Observe (Observasi):**
+    * Pendaftaran kuliah (`UC_Daftar`) terhubung keliru ke `Mahasiswa` alih-alih `Calon Mahasiswa`, menimbulkan inkonsistensi domain dengan Sequence PMB dan Class Diagram.
+    * Use case `UC_SanggahNilai` meng-extend `UC_InputNilai` yang diampu dosen, padahal secara kronologis sanggahan dipicu oleh mahasiswa setelah memeriksa Kartu Hasil Studi (`UC_LihatKHS`).
+    * Use case `UC_GenTranskrip` keliru diasosiasikan dengan `Dosen`, padahal penerbitan transkrip resmi adalah otoritas institusional `Admin/BAAK` atas permohonan `Mahasiswa`.
+    * Terdapat 7 use case yang telah aktif di sequence diagram atau class diagram tetapi belum terdaftar pada use case diagram: autentikasi (`UC_Login`), verifikasi seleksi PMB (`UC_VerifikasiSeleksi`), generasi NIM (`UC_GenerateNIM`), validasi kuota SKS (`UC_CekBatasSKS`), validasi bentrok jadwal (`UC_CekBentrokJadwal`), jadwal perkuliahan (`UC_LihatJadwal`), dan pengiriman notifikasi (`UC_KirimNotifikasi`).
+    * Ditemukan ambiguitas terminologi pembimbing akademik: use case memakai "Dosen Wali", sedangkan dokumen resmi kampus memakai "Dosen PA" (Penasihat/Pembimbing Akademik).
+  * 📋 **Plan (Rencana):**
+    * Memperkenalkan aktor eksplisit `Calon Mahasiswa` (`CALON`) yang menginisiasi `UC_Daftar`.
+    * Memecah aktor Dosen menjadi dua peran bisnis spesifik untuk mematuhi *Role Segregation (ISP)*: `DSN_PA` (Pembimbing Akademik) dan `DSN_Pengajar`.
+    * Memperbaiki relasi sanggah nilai: `UC_SanggahNilai -. "<<extend>>" .-> UC_LihatKHS`, serta menghubungkan aktor `Mahasiswa` dan `Dosen Pengajar`.
+    * Memutus relasi Dosen dari `UC_GenTranskrip` dan mengalihkannya ke `Admin` bersama `Mahasiswa`.
+    * Mengintegrasikan 7 use case baru ke dalam modul yang relevan, memastikan 4 aturan validasi KRS di Use Case sinkron 1:1 dengan 4 strategi `ValidationRule` di Class Diagram.
+    * Menstandarisasi istilah "Dosen PA" secara holistik pada `usecase-diagram.mmd`, `class-diagram.mmd` (atribut `dosenPA`, `getDosenPA`, `setDosenPA`), dan `sequence-krs.mmd` (`actor DosenPA`).
+  * ⚡ **Act (Tindakan / Aksi):**
+    * Memperbarui [`diagrams/usecase-diagram.mmd`](../diagrams/usecase-diagram.mmd) dengan seluruh restrukturisasi use case, relasi *include/extend*, dan peran aktor.
+    * Mengubah istilah `dosenWali` menjadi `dosenPA` pada [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd) dan [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd).
+    * Menguji kompilasi semua diagram menggunakan `mermaid-cli` (`mmdc`) untuk menjamin validitas sintaksis visual.
+  * 💡 **Reflect (Refleksi):**
+    * Seluruh artefak arsitektur sistem (Class Diagram, Sequence Diagram, dan Use Case Diagram) kini berada dalam keadaan **sinkron 100%** tanpa gap fungsional.
+    * Model use case baru mencerminkan batasan keamanan otorisasi (*Role-Based Access Control*) yang solid, di mana hak pendaftar, mahasiswa, dosen pengajar, dosen pembimbing akademik, dan administrator terisolasi secara tegas dan kohesif.
+* **Hasil / Luaran:**
+  * Diagram Use Case Mermaid yang telah diperbaiki: [`diagrams/usecase-diagram.mmd`](../diagrams/usecase-diagram.mmd).
+  * Diagram Class Mermaid yang telah distandarisasi: [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd).
+  * Diagram Sequence KRS Mermaid yang telah distandarisasi: [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd).

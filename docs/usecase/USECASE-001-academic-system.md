@@ -1,15 +1,15 @@
-# USECASE-001: Spesifikasi & Diagram Use Case Sistem Informasi Akademik (SIAKAD Mini)
+# USECASE-001: Spesifikasi & Diagram Use Case Platform Akademik (SEVIMA-Mini)
 
 * **Status:** Disetujui (*Approved*)
 * **Tanggal:** 2026-11-01
 * **Penyusun:** Arsitek Sistem (*System Architect*)
-* **Konteks Sistem:** Platform Akademik Kampus (*Academic Information System / SIAKAD Mini*)
+* **Konteks Sistem:** Platform Akademik Kampus (*Academic Information System / SEVIMA-Mini*)
 
 ---
 
 ## 1. Pendahuluan & Batasan Sistem (*System Boundary*)
 
-Diagram Use Case ini memodelkan fungsionalitas inti dan interaksi aktor di dalam batasan sistem **Sistem Informasi Akademik (SIAKAD Mini)**. Sistem ini melayani pengelolaan siklus hidup perkuliahan mahasiswa mulai dari admisi (pendaftaran), pembayaran kewajiban perkuliahan, registrasi rencana studi (KRS), penilaian akademik, hingga pencetakan transkrip dan kartu hasil studi.
+Diagram Use Case ini memodelkan fungsionalitas inti dan interaksi aktor di dalam batasan sistem **Platform Akademik (SEVIMA-Mini)**. Sistem ini melayani pengelolaan siklus hidup perkuliahan mahasiswa mulai dari admisi (pendaftaran), pembayaran kewajiban perkuliahan, registrasi rencana studi (KRS), penilaian akademik, hingga pencetakan transkrip dan kartu hasil studi.
 
 ---
 
@@ -20,7 +20,7 @@ Diagram Use Case ini memodelkan fungsionalitas inti dan interaksi aktor di dalam
 | **Mahasiswa** | *Primary Human Actor* | Mengakses layanan akademik mandiri: melakukan pendaftaran, pembayaran SPP/UKT, pengisian KRS semester berjalan, pengecekan jadwal & KHS, serta penerbitan transkrip nilai. |
 | **Dosen** | *Primary Human Actor* | Menjalankan dua peran fungsional: (1) **Dosen Pengajar** yang menginput dan memperbarui nilai perkuliahan, serta (2) **Dosen Pembimbing Akademik / Wali** yang memvalidasi dan menyetujui/menolak pengajuan KRS mahasiswa bimbingan. |
 | **Admin** | *Primary Human Actor* | Mengelola master data sistem: manajemen akun pengguna (*User*), pengelolaan kurikulum, katalog mata kuliah, alokasi ruang dan jadwal kuliah, serta monitoring sinkronisasi data PMB. |
-| **Sistem PMB** | *Secondary External System* | Sistem eksternal Penerimaan Mahasiswa Baru yang bertukar data pendaftaran mahasiswa baru, validasi berkas admisi, dan sinkronisasi status kelulusan seleksi ke SIAKAD. |
+| **Sistem PMB** | *Secondary External System* | Sistem eksternal Penerimaan Mahasiswa Baru yang bertukar data pendaftaran mahasiswa baru, validasi berkas admisi, dan sinkronisasi status kelulusan seleksi ke SEVIMA-Mini. |
 
 ---
 

@@ -1,4 +1,4 @@
-# Sistem Informasi Akademik (SIAKAD Mini) - Architecture Design
+# Platform Akademik (SEVIMA-Mini) - Architecture Design
 
 Dokumen arsitektur dan perancangan berorientasi objek untuk sistem informasi akademik kampus.
 
@@ -11,7 +11,7 @@ Dokumen arsitektur dan perancangan berorientasi objek untuk sistem informasi aka
 
 ### 2. Diagram & Arsitektur Use Case
 * 🎯 **Diagram UML Use Case (Mermaid):** [`diagrams/usecase-diagram.mmd`](diagrams/usecase-diagram.mmd)
-* 📑 **Spesifikasi Use Case (MD):** [`USECASE-001: Spesifikasi & Diagram Use Case SIAKAD Mini`](docs/usecase/USECASE-001-academic-system.md)
+* 📑 **Spesifikasi Use Case (MD):** [`USECASE-001: Spesifikasi & Diagram Use Case SEVIMA-Mini`](docs/usecase/USECASE-001-academic-system.md)
 * 📑 **Dokumentasi ADR-002 (MD):** [`ADR-002: Desain Use Case Sistem Informasi Akademik dan Relasi Include/Extend`](docs/adr/ADR-Markdown/ADR-002-academic-usecase-architecture.md)
 * 📕 **Dokumentasi ADR-002 (PDF):** [`ADR-002-academic-usecase-architecture.pdf`](docs/adr/ADR-002-academic-usecase-architecture.pdf)
 

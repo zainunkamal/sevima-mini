@@ -38,6 +38,7 @@ Tantangan arsitektur meliputi:
 | **`Schedule`** | Alokasi hari, jam, ruangan, dan verifikasi konflik bentrok (*room conflict*). | Dipisahkan dari `Course` agar pemetaan alokasi ruang dan waktu tidak mengotori metadata kurikulum mata kuliah. |
 | **`Enrollment`** | Entitas asosiatif transaksi perkuliahan antara `Mahasiswa` dan `Course`. | Menjadi *Aggregate Root* transaksi KRS. Mencegah kopling langsung *many-to-many* antara `Mahasiswa` dan `Course`. |
 | **`Grade`** | Komponen nilai tugas, UTS, UAS, kalkulasi nilai akhir, dan huruf mutu. | Komponen nilai yang terikat hidup-matinya pada satu `Enrollment`. |
+| **`Payment`** | Mengelola tagihan biaya perkuliahan (SPP/UKT), verifikasi pelunasan, dan audit transaksi keuangan per semester. | Menjadi syarat prasyarat finansial (*financial prerequisite*) sebelum pendaftaran/pengisian KRS (`Enrollment`) dapat divalidasi. |
 
 ---
 
@@ -58,6 +59,12 @@ Tantangan arsitektur meliputi:
    * **Alasan:** Mata kuliah tetap tercantum di katalog program studi meskipun pada semester berjalan tidak ada mahasiswa yang mendaftar.
 4. **`Dosen` $\rightarrow$ `Course`**:
    * **Alasan:** Penugasan dosen bersifat dinamis; dosen dapat cuti atau berpindah penugasan tanpa mematikan entitas mata kuliah.
+5. **`Mahasiswa` $\rightarrow$ `Payment`**:
+   * **Alasan:** Mahasiswa tetap eksis dan riwayat pembayaran memiliki siklus hidup audit keuangan independen; pembatalan/revisi KRS tidak menghapus catatan transaksi finansial mahasiswa.
+
+#### C. Dependency (`..>`) — Prasyarat Aturan Bisnis (*Business Rule Prerequisite*)
+1. **`Enrollment` $\rightarrow$ `Payment`**:
+   * **Alasan:** Mahasiswa hanya dapat mengisi dan mengesahkan rencana studi (`Enrollment` / KRS) jika tagihan pembayaran (`Payment`) pada semester berjalan telah terverifikasi lunas (`isLunas() == true`). `Enrollment` memvalidasi kelayakan mahasiswa berdasarkan status objek `Payment`.
 
 ---
 
@@ -67,6 +74,7 @@ Tantangan arsitektur meliputi:
   * `Schedule` bertanggung jawab atas ruang dan waktu (deteksi bentrok ruang).
   * `Grade` fokus pada struktur komponen angka dan delegasi perhitungan nilai.
   * `Enrollment` fokus mengontrol alur status pendaftaran (Pending, Approved, Dropped).
+  * `Payment` mengisolasi domain transaksi finansial, nominal, kanal bayar, dan audit status pelunasan terpisah dari domain akademik perkuliahan.
 * **Open/Closed Principle (OCP):**
   * Penambahan jenis peran baru (misalnya `Tendik` atau `Auditor`) cukup menambahkan subclass baru dari `User` tanpa mengubah logika otentikasi.
   * Skema perhitungan nilai terbuka untuk penambahan strategi baru (misal kelas praktikum vs kelas teori) melalui `IGradeEvaluator`.

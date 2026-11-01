@@ -282,8 +282,8 @@ classDiagram
     User <|-- CalonMahasiswa
 
     %% Factory & Creational
-    UserFactory ..> User : instantiates
-    UserFactory ..> NIMGenerator : delegates
+    UserFactory ..> User : menginstansiasi
+    UserFactory ..> NIMGenerator : mendelegasikan
 
     %% Program Studi Relations
     ProgramStudi "1" o-- "0..*" Mahasiswa : menaungi
@@ -291,32 +291,32 @@ classDiagram
     CalonMahasiswa ..> ProgramStudi : memilih
 
     %% Student, Advisor & Study Plan Relations
-    Mahasiswa "0..*" --> "1" Dosen : dosenWali
+    Mahasiswa "0..*" --> "1" Dosen : dosen wali
     Mahasiswa "1" *-- "0..*" KRS : memiliki
-    Mahasiswa "1" o-- "0..*" Payment : pays
+    Mahasiswa "1" o-- "0..*" Payment : membayar
 
     %% KRS & Enrollment Composition
     KRS "1" *-- "1..*" Enrollment : memuat
-    Enrollment "1" *-- "1" Grade : contains
+    Enrollment "1" *-- "1" Grade : memiliki nilai
     Enrollment "0..*" o-- "1" Schedule : mengikuti jadwal
-    Course "1" *-- "1..*" Schedule : defines
-    Course "1" o-- "0..*" Enrollment : offers
+    Course "1" *-- "1..*" Schedule : menetapkan jadwal
+    Course "1" o-- "0..*" Enrollment : membuka pendaftaran
     Course "0..*" o-- "0..*" Course : prasyarat
-    Dosen "1" o-- "0..*" Course : teaches
-    Enrollment "0..*" o-- "0..*" IEnrollmentObserver : observes
-    Enrollment ..> IGradeEvaluator : delegates evaluation
+    Dosen "1" o-- "0..*" Course : mengajar
+    Enrollment "0..*" o-- "0..*" IEnrollmentObserver : diamati oleh
+    Enrollment ..> IGradeEvaluator : mendelegasikan evaluasi
 
     %% Services & Orchestration Dependencies
-    KRSService ..> KRS : orkestrasi
-    KRSService o-- "1..*" ValidationRule : executes
-    KRSService ..> NotificationService : notifies
+    KRSService ..> KRS : mengorkestrasi
+    KRSService o-- "1..*" ValidationRule : menjalankan aturan
+    KRSService ..> NotificationService : mengirim notifikasi
 
-    PMBService ..> CalonMahasiswa : mengelola
-    PMBService ..> UserFactory : uses
-    PMBService ..> ProgramStudi : assigns
-    PMBService ..> NotificationService : notifies
+    PMBService ..> CalonMahasiswa : mengelola admisi
+    PMBService ..> UserFactory : menggunakan
+    PMBService ..> ProgramStudi : menetapkan program studi
+    PMBService ..> NotificationService : mengirim notifikasi
 
     %% Strategy Rules Dependencies
-    PaymentValidationRule ..> Payment : validates status
-    PrerequisiteRule ..> Course : checks prerequisite
-    ScheduleConflictRule ..> Schedule : checks conflict
+    PaymentValidationRule ..> Payment : memvalidasi tagihan
+    PrerequisiteRule ..> Course : memvalidasi prasyarat
+    ScheduleConflictRule ..> Schedule : memvalidasi bentrok jadwal

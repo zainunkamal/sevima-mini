@@ -1,6 +1,6 @@
 # 🤖 Log Penggunaan AI (AI Usage Log)
 
-> **Konteks:** Dokumentasi transparansi penggunaan kecerdasan buatan (*Generative AI / LLM*) dalam perancangan arsitektur, pemodelan berorientasi objek (UML), serta penyusunan *Architectural Decision Record* (ADR) pada sistem **SIAKAD Mini**.
+> **Konteks:** Dokumentasi transparansi penggunaan kecerdasan buatan (*Generative AI / LLM*) dalam perancangan arsitektur, pemodelan berorientasi objek (UML), serta penyusunan *Architectural Decision Record* (ADR) pada sistem **SEVIMA-Mini**.
 
 ---
 
@@ -13,6 +13,7 @@
 | **3** | Minggu 1 | Perancangan UML Use Case Diagram | Gemini 3.8 Flash | [`b9e493f`](https://github.com/zainunkamal/sevima-mini/commit/b9e493f) | Selesai (Diterima) |
 | **4** | Minggu 1 | Perancangan UML Sequence Diagram (PMB & KRS) | Gemini 3.8 Flash | [`eff27dc`](https://github.com/zainunkamal/sevima-mini/commit/eff27dc) | Selesai (Diterima) |
 | **5** | Minggu 1 | Dokumentasi ADR (ADR-002, ADR-003, PDF & Restrukturisasi) | Gemini 3.8 Flash | [`35d8ca6`](https://github.com/zainunkamal/sevima-mini/commit/35d8ca6) | Selesai (Diterima) |
+| **6** | Minggu 2 | Audit & Refactoring Class Diagram (OPAR) | Gemini 3.8 Flash | - | Selesai (Diterima) |
 
 ---
 
@@ -120,3 +121,55 @@
     * [`docs/adr/ADR-002-academic-usecase-architecture.pdf`](../docs/adr/ADR-002-academic-usecase-architecture.pdf)
     * [`docs/adr/ADR-003-academic-sequence-flows.pdf`](../docs/adr/ADR-003-academic-sequence-flows.pdf)
   * Restrukturisasi direktori `diagrams/`, `docs/adr/ADR-Markdown/`, dan pembersihan path relatif [README.md](../README.md).
+
+---
+
+### 🔹 Log 06: Refactoring & Penguatan Class Diagram Berbasis OPAR (Observe, Plan, Act, Reflect)
+* **Minggu:** `2`
+* **Fitur:** Audit Konsistensi Antardiagram & Refactoring Class Diagram (SOLID & Strategy Pattern)
+* **LLM/Tool:** `Gemini 3.8 Flash`
+* **Kode AI awal:** Revisi [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd)
+* **Revisi manual:** `-`
+* **Prompt Kunci:**
+  ```text
+  "Audit diagram berikut terhadap konsistensi dan prinsip SOLID.
+  Periksa:
+  1. Participant/method di sequence yang tidak ada di class diagram
+  2. Use case yang tidak punya sequence, atau sebaliknya
+  3. Pelanggaran SRP (class dengan terlalu banyak tanggung jawab)
+  4. Alternate flow yang hilang di tiap sequence"
+  
+  "Revisi class diagram berikut:
+  Perubahan yang saya setujui:
+  - Tambah class: KRS, KRSService, PMBService, NotificationService, ProgramStudi, NIMGenerator
+  - Strategy untuk validasi KRS: ValidationRule dengan PrerequisiteRule, SksLimitRule (max 24), ScheduleConflictRule
+  - Enrollment berelasi dengan Schedule dan punya semester
+  - Mahasiswa punya dosenWali (Dosen); Dosen dan Mahasiswa implement observer
+  - Hapus validasiSyaratPembayaran dari Enrollment, pindahkan ke ValidationRule
+  Output Mermaid + daftar perubahan (Sebelum -> Sesudah).
+  Catat di ai-usage-log terus tambahkan (OPAR) di ai-usage-log (observe , plan, act , reflect )"
+  ```
+* **Metodologi OPAR:**
+  * 👁️ **Observe (Observasi):**
+    * Ditemukan ketidakkonsistenan antara Sequence Diagram dan Class Diagram di mana participant service layer (`KRSService`, `PMBService`) dan boundary/storage belum dimodelkan.
+    * Entitas `Enrollment` memikul beban validasi pembayaran (`validasiSyaratPembayaran`), melanggar SRP dan membuat penggandengan yang keliru dengan `Payment`.
+    * Validasi pengisian KRS (prasyarat mata kuliah, batas kuota SKS, bentrok jadwal kelas) belum memiliki mekanisme extensibility yang modular.
+    * Entitas `Mahasiswa` belum memiliki asosiasi dosen wali (`dosenWali`) untuk workflow persetujuan KRS, dan `Dosen` belum menjadi observer penerima notifikasi pengajuan KRS.
+  * 📋 **Plan (Rencana):**
+    * Memisahkan tanggung jawab orkestrasi ke dalam Service Layer: `KRSService`, `PMBService`, dan `NotificationService`.
+    * Memodelkan agregat rencana studi mahasiswa dengan entitas `KRS` yang menaungi koleksi `Enrollment`.
+    * Mengimplementasikan **Strategy Pattern** untuk validasi KRS melalui interface `ValidationRule` dengan 4 rule konkret: `PrerequisiteRule`, `SksLimitRule` (maksimal 24 SKS), `ScheduleConflictRule`, dan `PaymentValidationRule`.
+    * Menghapus `validasiSyaratPembayaran` dari `Enrollment`, menambahkan atribut `semester`, serta menghubungkan `Enrollment` ke `Schedule`.
+    * Menetapkan relasi pembimbing akademik `Mahasiswa --> Dosen` (`dosenWali`) dan menerapkan `IEnrollmentObserver` pada `Dosen` dan `Mahasiswa`.
+    * Menambahkan entitas master `ProgramStudi` dan helper `NIMGenerator` yang didelegasikan oleh `UserFactory`.
+  * ⚡ **Act (Tindakan / Aksi):**
+    * Memperbarui [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd) dengan menambahkan 6 class baru (`KRS`, `KRSService`, `PMBService`, `NotificationService`, `ProgramStudi`, `NIMGenerator`).
+    * Menambahkan interface `ValidationRule` dan concrete rules (`PrerequisiteRule`, `SksLimitRule`, `ScheduleConflictRule`, `PaymentValidationRule`).
+    * Mengubah `Enrollment`: menambahkan `-int semester`, relasi ke `Schedule`, dan menghapus `validasiSyaratPembayaran()`.
+    * Menghubungkan `Mahasiswa` ke `Dosen` (`dosenWali`) dan menerapkan `IEnrollmentObserver` pada `Dosen` (`onEnrollmentStatusChanged`, `onGradeUpdated`).
+  * 💡 **Reflect (Refleksi):**
+    * Desain class diagram kini sepenuhnya selaras (*1:1 match*) dengan sequence diagram KRS dan PMB.
+    * Penerapan Strategy Pattern pada `ValidationRule` mematuhi prinsip **Open/Closed Principle (OCP)** dan **Single Responsibility Principle (SRP)**: aturan validasi baru dapat ditambahkan tanpa memodifikasi class `Enrollment` maupun `KRSService`.
+    * Pemisahan Service Layer mengeliminasi anomali *God Class* pada `Mahasiswa` dan `Enrollment`, sehingga arsitektur menjadi jauh lebih modular, siap diimplementasikan ke kode produksi, dan mudah diuji (*unit testable*).
+* **Hasil / Luaran:**
+  * Diagram Class Mermaid yang telah direvisi: [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd).

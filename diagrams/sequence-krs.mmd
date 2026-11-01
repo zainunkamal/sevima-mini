@@ -36,15 +36,16 @@ sequenceDiagram
         else Rule Pembayaran Berhasil (Lunas / Memiliki Dispensasi)
             PayRule-->>KRSService: true (Status SPP lunas)
 
-            Note over KRSService,Schedule: Tahap 3: Pengecekan Kuota Kapasitas Kelas
+            Note over KRSService,Schedule: Tahap 3: Reservasi Atomik Kuota Kapasitas Kelas (Pencegahan Race Condition / TOCTOU)
             loop Untuk Setiap Kelas Matakuliah yang Dipilih
-                KRSService->>Schedule: getKapasitas()
-                alt Alt Flow 3: Kuota Kapasitas Kelas Penuh
-                    Schedule-->>KRSService: 0 (Kapasitas kelas habis)
+                KRSService->>Schedule: reserveKapasitas()
+                alt Alt Flow 3: Kuota Kapasitas Kelas Penuh (Atomic Reservation Failed)
+                    Schedule-->>KRSService: false (Kapasitas habis / kuota penuh)
+                    KRSService->>Schedule: releaseKapasitas() [Kompensasi slot kelas yang sempat di-reserve]
                     KRSService-->>Portal: Error("Kelas matakuliah [kode] penuh, silakan pilih kelas lain")
                     Portal-->>Mhs: Tampilkan peringatan kapasitas penuh & ganti jadwal
-                else Kuota Kapasitas Kelas Tersedia
-                    Schedule-->>KRSService: sisaKuota (Kapasitas mencukupi)
+                else Kuota Berhasil Direservasi
+                    Schedule-->>KRSService: true (Slot kelas terkunci / kuota didecrement)
                 end
             end
 
@@ -58,6 +59,7 @@ sequenceDiagram
                     alt Alt Flow 4a: Rule Prasyarat Gagal (Belum Lulus Prasyarat)
                         Course-->>PrereqRule: false (Mata kuliah prasyarat belum lulus)
                         PrereqRule-->>KRSService: false
+                        KRSService->>Schedule: releaseKapasitas() [Kompensasi pelepasan slot kelas]
                         KRSService-->>Portal: Error("Matakuliah [kode] ditolak: prasyarat akademik belum terpenuhi")
                         Portal-->>Mhs: Tampilkan pesan matakuliah prasyarat belum lulus
                     else Rule Prasyarat Berhasil
@@ -69,6 +71,7 @@ sequenceDiagram
                     KRSService->>SksRule: validate(krs, mahasiswa)
                     alt Alt Flow 4b: Rule Batas SKS Gagal (Total SKS > 24)
                         SksRule-->>KRSService: false (Total beban SKS > 24)
+                        KRSService->>Schedule: releaseKapasitas() [Kompensasi pelepasan slot kelas]
                         KRSService-->>Portal: Error("Beban SKS melebihi kuota maksimal: Batas maksimal 24 SKS")
                         Portal-->>Mhs: Tampilkan peringatan beban SKS melebihi ketentuan
                     else Rule Batas SKS Berhasil (Total SKS <= 24)
@@ -81,6 +84,7 @@ sequenceDiagram
                     alt Alt Flow 4c: Rule Bentrok Jadwal Gagal (Jadwal Bertabrakan)
                         Schedule-->>ConflictRule: true (Jadwal bentrok)
                         ConflictRule-->>KRSService: false
+                        KRSService->>Schedule: releaseKapasitas() [Kompensasi pelepasan slot kelas]
                         KRSService-->>Portal: Error("Bentrok jadwal kuliah terdeteksi antara matakuliah terpilih")
                         Portal-->>Mhs: Tampilkan peringatan bentrok hari/jam perkuliahan
                     else Rule Bentrok Jadwal Berhasil (Tidak Ada Bentrok)
@@ -92,6 +96,7 @@ sequenceDiagram
                     KRSService->>DoubleRule: validate(krs, mahasiswa)
                     alt Alt Flow 4d: Rule Double Enrollment Gagal (Matakuliah Duplikat)
                         DoubleRule-->>KRSService: false (Matakuliah ganda terdeteksi dalam KRS)
+                        KRSService->>Schedule: releaseKapasitas() [Kompensasi pelepasan slot kelas]
                         KRSService-->>Portal: Error("Matakuliah [kode] sudah terdaftar dalam rencana studi")
                         Portal-->>Mhs: Tampilkan peringatan duplikasi matakuliah
                     else Rule Double Enrollment Berhasil (Tidak Ada Duplikasi)
@@ -104,30 +109,33 @@ sequenceDiagram
             loop Setiap Matakuliah yang Lolos Validasi
                 KRSService->>KRS: tambahEnrollment(enrollment)
                 KRSService->>Enrollment: setStatus("PENDING_APPROVAL")
-                Enrollment->>Enrollment: attachObserver(mahasiswa)
             end
             KRSService->>KRS: hitungTotalSks()
             KRSService->>KRS: setStatus("PENDING_APPROVAL")
 
-            Note over KRSService,DB: Tahap 6: Persistensi Data ke Basis Data
+            Note over KRSService,DB: Tahap 6: Persistensi Data dengan Batasan Transaksi (Transaction Scope & Rollback)
+            KRSService->>DB: beginTransaction()
             KRSService->>DB: simpanKRS(krs)
             alt Alt Flow 5: Terjadi Error Database (Connection Timeout / Failure)
                 DB-->>KRSService: Error: DatabaseException (Transaksi gagal di-commit)
+                KRSService->>DB: rollbackTransaction()
+                KRSService->>Schedule: releaseKapasitas() [Kompensasi pelepasan slot kelas]
                 KRSService-->>Portal: Error("Terjadi kegagalan sistem database saat menyimpan data KRS")
                 Portal-->>Mhs: Tampilkan notifikasi error server & instruksi submit ulang
             else Transaksi Database Sukses
                 DB-->>KRSService: ok (Data KRS tersimpan resmi berstatus "PENDING_APPROVAL")
+                KRSService->>DB: commitTransaction()
 
-                Note over KRSService,DosenPA: Tahap 7: Notifikasi Pengajuan KRS ke Dosen PA
-                KRSService->>Mhs: getDosenPA()
-                Mhs-->>KRSService: dosenPA
-                KRSService->>NotifService: kirimNotifikasi(dosenPA, "Pengajuan KRS mahasiswa butuh persetujuan")
+                Note over KRSService,DosenPA: Tahap 7: Notifikasi Pengajuan KRS ke Dosen PA (Event Broadcast Terpusat)
                 KRSService->>NotifService: broadcastKRSUpdate(krs, "PENDING_APPROVAL")
                 NotifService-->>DosenPA: onEnrollmentStatusChanged(enrollment, "PENDING_APPROVAL")
+                NotifService-->>DosenPA: kirimNotifikasi(dosenPA, "Pengajuan KRS mahasiswa membutuhkan persetujuan")
                 KRSService-->>Portal: Konfirmasi KRS berhasil diajukan berstatus "PENDING_APPROVAL"
                 Portal-->>Mhs: Tampilkan ringkasan draft KRS (Menunggu Persetujuan Dosen PA)
 
-                Note over DosenPA,Mhs: Tahap 8: Evaluasi & Persetujuan Dosen PA
+                Note over Mhs,DosenPA: =========================================================================
+                Note over Mhs,DosenPA: SESI ASINKRON TERPISAH: Evaluasi & Persetujuan Dosen PA (Waktu Terpisah)
+                Note over Mhs,DosenPA: =========================================================================
                 DosenPA->>Portal: Buka menu validasi KRS mahasiswa bimbingan
                 Portal->>KRSService: getDetailKRS(nim, semesterAktif)
                 KRSService-->>Portal: krs
@@ -146,6 +154,7 @@ sequenceDiagram
                     Portal->>KRSService: rejectKRS(krs, dosenPA, catatan)
                     KRSService->>KRS: setStatus("REVISED / REJECTED")
                     KRSService->>Enrollment: setStatus("REVISED / REJECTED")
+                    KRSService->>Schedule: releaseKapasitas() [Pelepasan slot kelas karena KRS ditolak/direvisi]
                     KRSService->>NotifService: broadcastKRSUpdate(krs, "REJECTED")
                     NotifService-->>Mhs: onEnrollmentStatusChanged(enrollment, "REJECTED")
                     KRSService-->>Portal: Konfirmasi penolakan tersimpan

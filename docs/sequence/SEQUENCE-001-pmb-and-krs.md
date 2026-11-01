@@ -78,7 +78,7 @@ Pengisian Kartu Rencana Studi (KRS) merupakan proses transaksi akademik yang kru
 * **`🔔 Layanan Notifikasi (NotificationService)`**: Layanan pengiriman notifikasi instan ke pengguna dan broadcast event pembaruan status KRS.
 * **`👨‍🏫 Dosen PA (Pembimbing Akademik)`**: Pembimbing akademik yang meninjau dan mengesahkan/menolak pengajuan KRS mahasiswa bimbingan.
 
-### 3.3 Rincian Tahapan Alur KRS & Alternate Flows
+### 3.3 Rincian Tahapan Alur KRS & Alternate Flows (Enterprise Architecture)
 1. **Tahap 1: Pengajuan KRS & Validasi Jadwal Periode (Masa KRS):**
    * Mahasiswa membuka formulir dan men-submit draft KRS.
    * `KRSService` memeriksa jadwal periode aktif (`cekKelayakanPengisianKRS`).
@@ -86,28 +86,32 @@ Pengisian Kartu Rencana Studi (KRS) merupakan proses transaksi akademik yang kru
 2. **Tahap 2: Pengecekan Syarat Finansial (Pembayaran SPP):**
    * Sistem mengevaluasi `PaymentValidationRule.validate(krs, mahasiswa)`.
    * **Alt Flow 2 (Tagihan SPP Belum Lunas):** Pengajuan KRS terkunci, sistem menampilkan instruksi pelunasan kewajiban SPP.
-3. **Tahap 3: Pengecekan Kuota Kapasitas Kelas:**
-   * Sistem memverifikasi kuota via `Schedule.getKapasitas()`.
-   * **Alt Flow 3 (Kapasitas Penuh):** Jika sisa kuota = 0, sistem menolak matakuliah tersebut dan meminta mahasiswa memilih kelas lain.
+3. **Tahap 3: Reservasi Atomik Kuota Kapasitas Kelas (Pencegahan Race Condition / TOCTOU):**
+   * Menghindari masalah konkurensi pada beban puncak ("War KRS"), sistem mengeksekusi penguncian kuota atomik via `Schedule.reserveKapasitas()`.
+   * **Alt Flow 3 (Kapasitas Penuh / Gagal Reservasi):** Jika kuota habis, sistem membatalkan reservasi parsial sebelumnya melalui transaksi kompensasi `Schedule.releaseKapasitas()` dan mengembalikan error ke mahasiswa.
+   * **Normal Flow:** Kuota berhasil di-reserve secara atomik di level basis data.
 4. **Tahap 4: Eksekusi Multi-Rule Validasi KRS (Strategy Pattern):**
    * `KRSService` mengeksekusi loop daftar `ValidationRule`:
      * **PrerequisiteRule:** Evaluasi kelulusan prasyarat via `Course.validasiPrasyarat(mahasiswa)`. (**Alt Flow 4a:** Ditolak jika prasyarat belum lulus).
      * **SksLimitRule:** Evaluasi batas kuota maksimal &le; 24 SKS. (**Alt Flow 4b:** Ditolak jika total beban SKS > 24).
      * **ScheduleConflictRule:** Deteksi bentrok hari/jam via `Schedule.cekBentrok(other)`. (**Alt Flow 4c:** Ditolak jika jadwal bertabrakan).
      * **DoubleEnrollmentRule:** Pencegahan pendaftaran matakuliah duplikat. (**Alt Flow 4d:** Ditolak jika matakuliah ganda terdeteksi).
+   * *Catatan Kompensasi:* Jika salah satu rule validasi gagal, seluruh reservasi slot kelas yang sempat dilakukan langsung dilepaskan via `Schedule.releaseKapasitas()`.
 5. **Tahap 5: Pembentukan Rencana Studi & Penetapan Status:**
    * Entitas `Enrollment` dibentuk dan diset ke status `"PENDING_APPROVAL"`.
-   * Total SKS dihitung dan status `KRS` disetel ke `"PENDING_APPROVAL"`.
-6. **Tahap 6: Persistensi Data ke Basis Data:**
-   * Sistem melakukan commit transaksi data ke database via `DB.simpanKRS(krs)`.
-   * **Alt Flow 5 (Error Database):** Jika terjadi `DatabaseException` / connection timeout, sistem menampilkan notifikasi galat transaksi server dan meminta mahasiswa melakukan submit ulang.
-7. **Tahap 7: Notifikasi Pengajuan KRS ke Dosen PA:**
-   * Sistem mengambil Dosen PA via `Mahasiswa.getDosenPA()`.
-   * `NotificationService` mengirimkan notifikasi ke Dosen PA dan mem-broadcast pembaruan status ke observer (`onEnrollmentStatusChanged`).
-8. **Tahap 8: Evaluasi & Persetujuan Dosen PA:**
-   * Dosen PA membuka portal validasi dan meninjau detail KRS (`KRSService.getDetailKRS`).
+   * Total SKS dihitung dan status agregat `KRS` disetel ke `"PENDING_APPROVAL"`.
+6. **Tahap 6: Persistensi Data dengan Batasan Transaksi (Transaction Scope & ACID):**
+   * Sistem membuka transaksi database (`DB.beginTransaction()`) sebelum memanggil `DB.simpanKRS(krs)`.
+   * **Alt Flow 5 (Error Database):** Jika terjadi `DatabaseException` / connection timeout, sistem memicu `DB.rollbackTransaction()` dan melepaskan reservasi kuota via `Schedule.releaseKapasitas()`.
+   * **Normal Flow:** Transaksi di-commit (`DB.commitTransaction()`) dan status tersimpan resmi.
+7. **Tahap 7: Notifikasi Pengajuan KRS ke Dosen PA (Event-Driven Dispatching):**
+   * `KRSService` mempublikasikan event tunggal `NotificationService.broadcastKRSUpdate(krs, "PENDING_APPROVAL")`.
+   * `NotificationService` mendistribusikan notifikasi ke observer Dosen PA (`onEnrollmentStatusChanged`) dan pesan push/email tanpa duplikasi pemanggilan service.
+8. **Tahap 8: Evaluasi & Persetujuan Dosen PA (Sesi Asinkron Terpisah):**
+   * *Temporal Decoupling:* Tahap ini berlangsung pada sesi waktu terpisah (*asynchronous session*) saat Dosen PA login ke portal akademik.
+   * Dosen PA meninjau detail KRS (`KRSService.getDetailKRS`).
    * **Persetujuan (Approve):** Dosen memanggil `approveKRS()`, status diubah menjadi `"APPROVED"`, notifikasi terkirim ke mahasiswa.
-   * **Penolakan / Revisi (Reject):** Dosen menginput catatan perbaikan via `rejectKRS()`, status diubah menjadi `"REVISED / REJECTED"`, notifikasi revisi terkirim ke mahasiswa.
+   * **Penolakan / Revisi (Reject):** Dosen menginput catatan perbaikan via `rejectKRS()`, status diubah menjadi `"REVISED / REJECTED"`, kuota kelas dilepaskan via `Schedule.releaseKapasitas()`, dan notifikasi perbaikan terkirim ke mahasiswa.
 
 ---
 

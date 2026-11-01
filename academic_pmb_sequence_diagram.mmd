@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    actor Calon as 👤 Calon Mahasiswa
+    participant Portal as 🌐 Portal PMB
+    participant PMBService as ⚙️ PMB Controller
+    participant Storage as 📁 Document Storage
+    actor Admin as 👨‍💼 Admin Admisi
+    participant Factory as 🏭 UserFactory
+    participant DB as 🗄️ Database SIAKAD
+
+    Note over Calon,Portal: Tahap 1: Registrasi & Pengisian Berkas Pendaftaran
+    Calon->>Portal: Akses formulir pendaftaran & pilih Program Studi
+    Portal->>PMBService: submitPendaftaran(dataDiri, prodiId, jalurMasuk)
+    PMBService->>DB: simpanDataPendaftaran(CalonMahasiswa)
+    DB-->>PMBService: noPendaftaran generated
+    PMBService-->>Portal: noPendaftaran & tautan unggah dokumen
+    Portal-->>Calon: Tampilkan No Pendaftaran
+
+    Calon->>Portal: Unggah berkas (Ijazah, KTP, SKL/Transkrip)
+    Portal->>PMBService: uploadBerkas(noPendaftaran, fileData)
+    PMBService->>Storage: simpanBerkas(fileData)
+    Storage-->>PMBService: berkasPath
+    PMBService->>DB: updateDokumen(noPendaftaran, berkasPath, status="PENDING_SELEKSI")
+    DB-->>PMBService: ok
+    PMBService-->>Portal: Berkas berhasil diunggah
+    Portal-->>Calon: Konfirmasi berkas tersimpan & menunggu verifikasi
+
+    Note over Admin,DB: Tahap 2: Verifikasi Berkas & Seleksi Masuk
+    Admin->>Portal: Akses daftar antrean seleksi calon mahasiswa
+    Portal->>PMBService: getAntreanSeleksi()
+    PMBService->>DB: queryCalonMahasiswa(status="PENDING_SELEKSI")
+    DB-->>PMBService: listCalonMahasiswa
+    PMBService-->>Portal: Tampilkan data diri & dokumen pendaftar
+    Admin->>Portal: Verifikasi berkas & input kelulusan seleksi ("LULUS")
+    Portal->>PMBService: updateStatusSeleksi(noPendaftaran, "LULUS")
+    PMBService->>DB: simpanHasilSeleksi(status="LULUS")
+    DB-->>PMBService: ok
+    PMBService-->>Portal: Status seleksi berhasil diperbarui
+
+    Note over PMBService,DB: Tahap 3: Sinkronisasi & Pembuatan Akun Mahasiswa Baru
+    PMBService->>Factory: createUser(role="Mahasiswa", dataCalon)
+    Factory->>Factory: generateNIM(prodiId, tahunAkademik)
+    Factory->>Factory: instantiate Mahasiswa(nim, email, passwordHash)
+    Factory-->>PMBService: Objek Mahasiswa baru
+    PMBService->>DB: simpanMahasiswaBaru(Mahasiswa)
+    DB-->>PMBService: Mahasiswa tersimpan resmi
+    PMBService-->>Calon: Notifikasi Penerimaan & Informasi Akun SIAKAD (NIM & Password)

@@ -1,0 +1,74 @@
+sequenceDiagram
+    autonumber
+    actor Mhs as 👤 Mahasiswa
+    participant Portal as 🌐 Portal SIAKAD (KRS)
+    participant KRSService as ⚙️ Enrollment Service
+    participant Payment as 💳 Payment Entity
+    participant Course as 📚 Course Entity
+    participant Enrollment as 📝 Enrollment Entity
+    actor DosenWali as 👨‍🏫 Dosen Wali
+    participant Observer as 🔔 IEnrollmentObserver
+
+    Note over Mhs,Portal: Tahap 1: Validasi Prasyarat Pembayaran SPP (Financial Prerequisite)
+    Mhs->>Portal: Buka menu Pengisian KRS (semester aktif)
+    Portal->>KRSService: cekKelayakanPengisianKRS(nim, semesterAktif)
+    KRSService->>Payment: getPayment(nim, semesterAktif)
+    Payment-->>KRSService: paymentObj
+    KRSService->>Payment: isLunas()
+
+    alt Status Pembayaran Belum Lunas
+        Payment-->>KRSService: false (Status: "PENDING" / "BELUM_BAYAR")
+        KRSService-->>Portal: Error("KRS Terkunci: Tagihan SPP semester berjalan belum lunas")
+        Portal-->>Mhs: Tampilkan peringatan & instruksi pembayaran SPP
+    else Status Pembayaran Lunas
+        Payment-->>KRSService: true (Status: "LUNAS")
+        KRSService->>Course: getKatalogPenawaran(semesterAktif)
+        Course-->>KRSService: listCourseTersedia
+        KRSService-->>Portal: Akses KRS dibuka & tampilkan katalog mata kuliah
+        Portal-->>Mhs: Tampilkan daftar mata kuliah yang dapat dipilih
+
+        Note over Mhs,Course: Tahap 2: Pemilihan Mata Kuliah & Pengecekan Prasyarat Akademik
+        Mhs->>Portal: Pilih daftar mata kuliah & submit isiKRS(courses)
+        Portal->>KRSService: prosesPengajuanKRS(nim, listSelectedCourses)
+
+        loop Untuk Setiap Course yang Dipilih
+            KRSService->>Course: validasiPrasyarat(mahasiswa)
+            alt Prasyarat Akademik Tidak Terpenuhi
+                Course-->>KRSService: false (Mata kuliah prasyarat belum lulus)
+                KRSService-->>Portal: Warning("Mata kuliah [kode] ditolak: prasyarat belum terpenuhi")
+            else Prasyarat Akademik Terpenuhi
+                Course-->>KRSService: true (Lulus prasyarat)
+                KRSService->>Enrollment: createEnrollment(mahasiswa, course, status="PENDING_APPROVAL")
+                Enrollment->>Enrollment: attachObserver(mahasiswa)
+                Enrollment-->>KRSService: enrollmentRecord
+            end
+        end
+
+        KRSService-->>Portal: Draft KRS berhasil diajukan, menunggu persetujuan
+        Portal-->>Mhs: Tampilkan ringkasan KRS berstatus "PENDING_APPROVAL"
+
+        Note over DosenWali,Observer: Tahap 3: Validasi & Persetujuan Dosen Wali (DPA)
+        KRSService->>DosenWali: Notifikasi pengajuan KRS mahasiswa bimbingan
+        DosenWali->>Portal: Buka menu validasi KRS mahasiswa bimbingan
+        Portal->>KRSService: getDetailKRS(nim, semesterAktif)
+        KRSService-->>Portal: listEnrollment
+        Portal-->>DosenWali: Tampilkan rencana mata kuliah & jadwal
+
+        alt Dosen Wali Menyetujui KRS
+            DosenWali->>Portal: Setujui KRS (Approve All)
+            Portal->>KRSService: approveKRS(nim, semesterAktif)
+            KRSService->>Enrollment: setStatus("APPROVED")
+            Enrollment->>Observer: onEnrollmentStatusChanged(enrollment, "APPROVED")
+            Observer-->>Mhs: Notifikasi real-time: "KRS Disetujui Dosen Wali"
+            KRSService-->>Portal: Konfirmasi KRS aktif
+            Portal-->>DosenWali: KRS berhasil disetujui
+        else Dosen Wali Menolak / Minta Revisi KRS
+            DosenWali->>Portal: Tolak KRS (inputCatatanRevisi)
+            Portal->>KRSService: rejectKRS(nim, catatan)
+            KRSService->>Enrollment: setStatus("REVISED / REJECTED")
+            Enrollment->>Observer: onEnrollmentStatusChanged(enrollment, "REJECTED")
+            Observer-->>Mhs: Notifikasi: "KRS Ditolak, silakan lakukan revisi"
+            KRSService-->>Portal: Konfirmasi penolakan tersimpan
+            Portal-->>DosenWali: Status penolakan & catatan terkirim
+        end
+    end

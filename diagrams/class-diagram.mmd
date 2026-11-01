@@ -120,7 +120,6 @@ classDiagram
     }
 
     class UserFactory {
-        -NIMGenerator nimGenerator
         +createUser(role: string, data: Map) User
     }
 
@@ -239,11 +238,13 @@ classDiagram
     }
 
     class PMBService {
+        -NIMGenerator nimGenerator
         -UserFactory userFactory
         -NotificationService notificationService
         +submitPendaftaran(calon: CalonMahasiswa, prodi: ProgramStudi) string
         +uploadBerkas(noPendaftaran: string, berkasPath: string) bool
         +verifikasiBerkas(noPendaftaran: string, status: string) void
+        +getAntreanSeleksi() List~CalonMahasiswa~
         +sinkronisasiMahasiswaBaru(calon: CalonMahasiswa) Mahasiswa
     }
 
@@ -318,6 +319,7 @@ classDiagram
     KRSService ..> NotificationService : mengirim notifikasi
 
     PMBService ..> CalonMahasiswa : mengelola admisi
+    PMBService ..> NIMGenerator : menggunakan generator NIM
     PMBService ..> UserFactory : menggunakan
     PMBService ..> ProgramStudi : menetapkan program studi
     PMBService ..> NotificationService : mengirim notifikasi

@@ -5,43 +5,91 @@ sequenceDiagram
     participant PMBService as ⚙️ Layanan PMB (PMBService)
     participant Storage as 📁 Penyimpanan Berkas (Storage)
     actor Admin as 👨‍💼 Admin Admisi
+    participant NIMGen as 🔢 Generator NIM (NIMGenerator)
     participant Factory as 🏭 UserFactory
     participant DB as 🗄️ Database SEVIMA-Mini
+    participant NotifService as 🔔 Layanan Notifikasi (NotificationService)
 
-    Note over Calon,Portal: Tahap 1: Registrasi & Pengisian Berkas Pendaftaran
-    Calon->>Portal: Akses formulir pendaftaran & pilih Program Studi
-    Portal->>PMBService: submitPendaftaran(dataDiri, prodiId, jalurMasuk)
-    PMBService->>DB: simpanDataPendaftaran(CalonMahasiswa)
-    DB-->>PMBService: noPendaftaran generated
-    PMBService-->>Portal: noPendaftaran & tautan unggah dokumen
-    Portal-->>Calon: Tampilkan No Pendaftaran
+    Note over Calon,Portal: Tahap 1: Registrasi Akun & Pengisian Formulir Pendaftaran
+    Calon->>Portal: Input data formulir (nama, email, noHp, prodi, jalurMasuk)
+    Portal->>Portal: validasiKelengkapanForm(formData)
 
-    Calon->>Portal: Unggah berkas (Ijazah, KTP, SKL/Transkrip)
-    Portal->>PMBService: uploadBerkas(noPendaftaran, fileData)
-    PMBService->>Storage: simpanBerkas(fileData)
-    Storage-->>PMBService: berkasPath
-    PMBService->>DB: updateDokumen(noPendaftaran, berkasPath, status="PENDING_SELEKSI")
-    DB-->>PMBService: ok
-    PMBService-->>Portal: Berkas berhasil diunggah
-    Portal-->>Calon: Konfirmasi berkas tersimpan & menunggu verifikasi
+    alt Alt Flow 1: Validasi Form Gagal (HTTP 400 Bad Request)
+        Portal-->>Calon: Error 400 ("Data formulir pendaftaran tidak lengkap atau format tidak valid")
+    else Form Pendaftaran Valid
+        Portal->>PMBService: submitPendaftaran(calon, prodi)
+        PMBService->>DB: cekEmailTerdaftar(calon.getEmail())
 
-    Note over Admin,DB: Tahap 2: Verifikasi Berkas & Seleksi Masuk
-    Admin->>Portal: Akses daftar antrean seleksi calon mahasiswa
-    Portal->>PMBService: getAntreanSeleksi()
-    PMBService->>DB: queryCalonMahasiswa(status="PENDING_SELEKSI")
-    DB-->>PMBService: listCalonMahasiswa
-    PMBService-->>Portal: Tampilkan data diri & dokumen pendaftar
-    Admin->>Portal: Verifikasi berkas & input kelulusan seleksi ("LULUS")
-    Portal->>PMBService: updateStatusSeleksi(noPendaftaran, "LULUS")
-    PMBService->>DB: simpanHasilSeleksi(status="LULUS")
-    DB-->>PMBService: ok
-    PMBService-->>Portal: Status seleksi berhasil diperbarui
+        alt Alt Flow 2: Email Duplikat Terdeteksi (HTTP 409 Conflict)
+            DB-->>PMBService: true (Email sudah terdaftar)
+            PMBService-->>Portal: Error 409 ("Email sudah terdaftar dalam sistem PMB")
+            Portal-->>Calon: Tampilkan peringatan email ganda & opsi pemulihan akun / login
+        else Email Unik (Belum Terdaftar)
+            DB-->>PMBService: false (Email tersedia)
+            PMBService->>DB: simpanDataPendaftaran(calon, status="pending")
+            DB-->>PMBService: noPendaftaran & status="pending"
+            PMBService-->>Portal: noPendaftaran & tautan unggah dokumen
+            Portal-->>Calon: Tampilkan No Pendaftaran resmi (Status: "pending")
 
-    Note over PMBService,DB: Tahap 3: Sinkronisasi & Pembuatan Akun Mahasiswa Baru
-    PMBService->>Factory: createUser(role="Mahasiswa", dataCalon)
-    Factory->>Factory: generateNIM(prodiId, tahunAkademik)
-    Factory->>Factory: instantiate Mahasiswa(nim, email, passwordHash)
-    Factory-->>PMBService: Objek Mahasiswa baru
-    PMBService->>DB: simpanMahasiswaBaru(Mahasiswa)
-    DB-->>PMBService: Mahasiswa tersimpan resmi
-    PMBService-->>Calon: Notifikasi Penerimaan & Informasi Akun SEVIMA-Mini (NIM & Password)
+            Note over Calon,Storage: Tahap 2: Unggah Berkas Persyaratan & Validasi Dokumen
+            Calon->>Portal: Unggah berkas dokumen (Ijazah, KTP, Transkrip/SKL)
+            Portal->>PMBService: uploadBerkas(noPendaftaran, fileData)
+            PMBService->>PMBService: validasiFormatDanUkuranBerkas(fileData)
+
+            alt Alt Flow 3: Berkas Tidak Valid (Format / Ukuran Salah)
+                PMBService-->>Portal: Error("Format berkas tidak valid atau ukuran melebihi batas 2MB (Gunakan PDF/JPG)")
+                Portal-->>Calon: Tampilkan peringatan gagal unggah & instruksi unggah ulang
+            else Berkas Memenuhi Standar Validasi
+                PMBService->>Storage: simpanBerkas(fileData)
+                Storage-->>PMBService: berkasPath
+                PMBService->>DB: updateDokumen(noPendaftaran, berkasPath, status="pending")
+                DB-->>PMBService: ok
+                PMBService-->>Portal: Berkas berhasil diunggah (Status: "pending")
+                Portal-->>Calon: Konfirmasi berkas tersimpan (Status: "pending", Menunggu Seleksi)
+
+                Note over Admin,DB: Tahap 3: Verifikasi Berkas & Keputusan Seleksi Masuk
+                Admin->>Portal: Akses daftar antrean seleksi calon mahasiswa
+                Portal->>PMBService: getAntreanSeleksi()
+                PMBService->>DB: queryCalonMahasiswa(status="pending")
+                DB-->>PMBService: listCalonMahasiswa (status="pending")
+                PMBService-->>Portal: Tampilkan antrean pendaftar & dokumen persyaratan
+                Admin->>Portal: Verifikasi kelayakan berkas & input keputusan seleksi
+
+                alt Alt Flow 4: Calon Ditolak / Tidak Lulus (Status: "rejected")
+                    Admin->>Portal: Input penolakan seleksi (status="rejected", catatan="Syarat berkas/nilai belum terpenuhi")
+                    Portal->>PMBService: verifikasiBerkas(noPendaftaran, status="rejected")
+                    PMBService->>DB: updateStatusSeleksi(noPendaftaran, status="rejected")
+                    DB-->>PMBService: ok
+                    PMBService->>NotifService: kirimNotifikasi(calon, "Mohon maaf, Anda dinyatakan TIDAK LULUS seleksi PMB SEVIMA-Mini")
+                    NotifService-->>Calon: Notifikasi Penolakan Admisi (Status: "rejected")
+                    PMBService-->>Portal: Status seleksi berhasil diperbarui ("rejected")
+                    Portal-->>Admin: Konfirmasi keputusan penolakan tersimpan
+                else Calon Diterima / Lulus Seleksi (Status: "approved")
+                    Admin->>Portal: Input persetujuan kelulusan (status="approved")
+                    Portal->>PMBService: verifikasiBerkas(noPendaftaran, status="approved")
+                    PMBService->>DB: updateStatusSeleksi(noPendaftaran, status="approved")
+                    DB-->>PMBService: ok
+                    PMBService-->>Portal: Status seleksi berhasil diperbarui ("approved")
+                    Portal-->>Admin: Konfirmasi kelulusan tersimpan
+
+                    Note over PMBService,NotifService: Tahap 4: Sinkronisasi, Pembuatan Akun & Tautan Aktivasi
+                    PMBService->>PMBService: sinkronisasiMahasiswaBaru(calon)
+
+                    Note over PMBService,NIMGen: Pemisahan Generator NIM dari UserFactory (Kepatuhan Prinsip SRP)
+                    PMBService->>NIMGen: generateNIM(prodi, tahunMasuk)
+                    NIMGen-->>PMBService: nimBaru
+
+                    PMBService->>Factory: createUser(role="Mahasiswa", dataCalonWithNIM)
+                    Factory-->>PMBService: objek Mahasiswa baru
+                    PMBService->>DB: simpanMahasiswaBaru(mahasiswa)
+                    DB-->>PMBService: ok (Data Mahasiswa aktif tersimpan)
+
+                    Note over PMBService,NotifService: Keamanan Kredensial: Mengirimkan Tautan Aktivasi (Bukan Password Polos)
+                    PMBService->>PMBService: generateTautanAktivasi(mahasiswa)
+                    PMBService->>NotifService: kirimNotifikasi(calon, "Selamat Anda diterima! Silakan aktivasi akun Anda melalui: " + tautanAktivasi)
+                    NotifService-->>Calon: Notifikasi Penerimaan Resmi (NIM & Tautan Aktivasi Akun)
+                    PMBService-->>Portal: Sinkronisasi akun mahasiswa baru berhasil diselesaikan
+                end
+            end
+        end
+    end

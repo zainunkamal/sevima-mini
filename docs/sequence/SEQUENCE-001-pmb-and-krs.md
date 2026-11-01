@@ -23,16 +23,38 @@ Alur pendaftaran mahasiswa baru menjembatani masa transisi entitas `CalonMahasis
 ### 2.2 Partisipan & Peran
 * **`👤 Calon Mahasiswa`**: Pengguna yang mengisi formulir pendaftaran dan mengunggah dokumen legalitas.
 * **`🌐 Portal PMB`**: Antarmuka web registrasi admisi.
-* **`⚙️ PMB Controller`**: Pengontrol logika bisnis pendaftaran dan sinkronisasi.
-* **`📁 Document Storage`**: Layanan penyimpanan dokumen digital (Ijazah, SKL, KTP).
+* **`⚙️ Layanan PMB (PMBService)`**: Komponen orkestrasi bisnis pendaftaran, seleksi, dan sinkronisasi.
+* **`📁 Penyimpanan Berkas (Storage)`**: Layanan penyimpanan dokumen digital (Ijazah, SKL, KTP).
 * **`👨‍💼 Admin Admisi`**: Staf yang memverifikasi keabsahan dokumen dan mengesahkan status kelulusan seleksi.
-* **`🏭 UserFactory`**: Pabrik objek polimorfik yang mengenkapsulasi pembuatan objek `Mahasiswa` dan pembentukan NIM.
-* **`🗄️ Database SEVIMA-Mini`**: Basis data relasional penyimpanan entitas pengguna dan akademik.
+* **`🔢 Generator NIM (NIMGenerator)`**: Komponen independen yang mengenkapsulasi algoritma pembentukan Nomor Induk Mahasiswa (NIM) resmi per program studi dan tahun masuk (pemisahan tanggung jawab/SRP dari factory).
+* **`🏭 UserFactory`**: Pabrik objek polimorfik yang menginstansiasi objek `Mahasiswa` murni berdasarkan data dan NIM yang telah diterbitkan.
+* **`🗄️ Database SEVIMA-Mini`**: Basis data relasional penyimpanan entitas pendaftar dan pengguna akademik.
+* **`🔔 Layanan Notifikasi (NotificationService)`**: Layanan pengiriman notifikasi pengumuman seleksi dan tautan aktivasi akun pendaftar.
 
-### 2.3 Rincian Tahapan Alur PMB
-1. **Tahap Registrasi & Berkas:** Calon mahasiswa mengisi formulir program studi dan jalur masuk, memperoleh nomor pendaftaran unik, lalu mengunggah berkas persyaratan.
-2. **Tahap Verifikasi & Seleksi:** Admin mengakses antrean berkas berstatus `PENDING_SELEKSI`, memvalidasi dokumen, dan menginput hasil keputusan kelulusan (`LULUS`).
-3. **Tahap Sinkronisasi & Akun:** Sistem memanggil `UserFactory.createUser(role="Mahasiswa", data)` untuk men-generate NIM resmi berdasarkan kode prodi dan tahun akademik, menginstansiasi objek `Mahasiswa`, menyimpannya ke basis data, dan menerbitkan kredensial login SEVIMA-Mini kepada mahasiswa baru.
+### 2.3 Rincian Tahapan Alur PMB & Alternate Flows
+1. **Tahap 1: Registrasi Akun & Pengisian Formulir Pendaftaran:**
+   * Calon mahasiswa menginput data diri, memilih program studi, dan jalur masuk.
+   * Portal memvalidasi kelengkapan data formulir.
+   * **Alt Flow 1 (Validasi Form Gagal - HTTP 400):** Jika input tidak lengkap/tidak valid, sistem menolak dan mengembalikan HTTP 400 Bad Request.
+   * Sistem mengecek keberadaan email via `DB.cekEmailTerdaftar()`.
+   * **Alt Flow 2 (Email Duplikat - HTTP 409):** Jika email sudah terdaftar, sistem mengembalikan HTTP 409 Conflict dan meminta calon mahasiswa login/menggunakan email lain.
+   * **Normal Flow:** Data tersimpan dengan status `"pending"` dan nomor pendaftaran diterbitkan.
+2. **Tahap 2: Unggah Berkas Persyaratan & Validasi Dokumen:**
+   * Calon mahasiswa mengunggah berkas persyaratan (Ijazah, KTP, SKL).
+   * `PMBService` memvalidasi format dan ukuran file (maks 2MB, PDF/JPG).
+   * **Alt Flow 3 (Berkas Tidak Valid):** Jika format atau ukuran melanggar ketentuan, sistem menolak unggahan dan menginstruksikan upload ulang.
+   * **Normal Flow:** Berkas disimpan ke `Storage`, tautan path diperbarui ke database, dan status pendaftaran tetap `"pending"`.
+3. **Tahap 3: Verifikasi Berkas & Keputusan Seleksi Masuk:**
+   * Admin Admisi mengakses daftar antrean berstatus `"pending"` via `PMBService.getAntreanSeleksi()`.
+   * Admin memeriksa kelayakan berkas dan menginput keputusan seleksi.
+   * **Alt Flow 4 (Calon Ditolak - status: "rejected"):** Jika calon tidak memenuhi standar nilai/persyaratan, status diset menjadi `"rejected"`. Sistem memanggil `NotificationService.kirimNotifikasi()` untuk mengabari penolakan seleksi. Alur terhenti (tidak dibuatkan akun).
+   * **Normal Flow (Calon Diterima - status: "approved"):** Status diset menjadi `"approved"`.
+4. **Tahap 4: Sinkronisasi, Pembuatan Akun & Pengiriman Tautan Aktivasi:**
+   * `PMBService` mengeksekusi `sinkronisasiMahasiswaBaru()`.
+   * `PMBService` memanggil `NIMGenerator.generateNIM(prodi, tahunMasuk)` untuk menghasilkan NIM resmi.
+   * `UserFactory.createUser(role="Mahasiswa", data)` dipanggil dengan menyertakan NIM untuk membentuk objek entitas `Mahasiswa`.
+   * Data akun mahasiswa disimpan ke database.
+   * Menggantikan pengiriman password polos, `PMBService` men-generate tautan aktivasi akun (`tautanAktivasi`) dan mengirimkannya secara aman via `NotificationService.kirimNotifikasi()`. Calon mahasiswa menerima NIM dan tautan aktivasi untuk menyelesaikan registrasi kredensial mandiri.
 
 ---
 

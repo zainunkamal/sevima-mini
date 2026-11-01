@@ -41,8 +41,11 @@ classDiagram
         -string statusAkademik
         -float ipk
         +getNim() string
+        +isiKRS(courses: List~Course~) List~Enrollment~
         +lihatKRS() List~Enrollment~
         +lihatKHS() List~Grade~
+        +cekStatusPembayaran(semester: int) bool
+        +lihatRiwayatPembayaran() List~Payment~
         +onEnrollmentStatusChanged(enrollment: Enrollment, newStatus: string) void
         +onGradeUpdated(enrollment: Enrollment, grade: Grade) void
     }
@@ -60,6 +63,7 @@ classDiagram
         -List~string~ permissions
         +kelolaUser(user: User) void
         +kelolaKurikulum(course: Course) void
+        +verifikasiPembayaran(payment: Payment) void
     }
 
     class CalonMahasiswa {
@@ -106,6 +110,7 @@ classDiagram
         -List~IEnrollmentObserver~ observers
         +getIdEnrollment() string
         +getStatus() string
+        +validasiSyaratPembayaran(payment: Payment) bool
         +batalkanEnrollment() void
         +getGrade() Grade
         +attachObserver(observer: IEnrollmentObserver) void
@@ -122,6 +127,23 @@ classDiagram
         +hitungNilaiAkhir(evaluator: IGradeEvaluator) float
         +getNilaiHuruf() string
         +updateNilai(tugas: float, uts: float, uas: float) void
+    }
+
+    %% Financial / Payment Domain Core
+    class Payment {
+        -string idPayment
+        -float jumlah
+        -int semester
+        -string status
+        -string metodePembayaran
+        -DateTime batasWaktuBayar
+        -DateTime tanggalBayar
+        +getIdPayment() string
+        +getJumlah() float
+        +getStatus() string
+        +getSemester() int
+        +isLunas() bool
+        +konfirmasiPembayaran() bool
     }
 
     %% Concrete Strategies (Strategy Pattern)
@@ -155,7 +177,9 @@ classDiagram
     %% Aggregation (o--) - Weak lifecycle coupling
     Course "0..*" o-- "0..*" Course : prasyarat
     Mahasiswa "1" o-- "0..*" Enrollment : registers
+    Mahasiswa "1" o-- "0..*" Payment : pays
     Course "1" o-- "0..*" Enrollment : offers
     Dosen "1" o-- "0..*" Course : teaches
     Enrollment "0..*" o-- "0..*" IEnrollmentObserver : observes
     Enrollment ..> IGradeEvaluator : delegates evaluation
+    Enrollment ..> Payment : validates prerequisite

@@ -17,6 +17,7 @@
 | **7** | Minggu 2 | Refactoring Use Case Diagram & Standardisasi Dosen PA (OPAR) | Gemini 3.8 Flash | [`ad28839`](https://github.com/zainunkamal/sevima-mini/commit/ad28839) | Selesai (Diterima) |
 | **8** | Minggu 2 | Refactoring Sequence Diagram KRS Multi-Rule & Alt-Flows (OPAR) | Gemini 3.8 Flash | [`73781a2`](https://github.com/zainunkamal/sevima-mini/commit/73781a2) | Selesai (Diterima) |
 | **9** | Minggu 2 | Refactoring Sequence Diagram PMB Multi-Alt-Flows & Pemisahan NIMGenerator (OPAR) | Gemini 3.8 Flash | [`2ec94c1`](https://github.com/zainunkamal/sevima-mini/commit/2ec94c1) | Selesai (Diterima) |
+| **10** | Minggu 2 | Hardening Sequence Diagram KRS: Concurrency, ACID & Async Lifecycle (OPAR) | Gemini 3.8 Flash | [`4f04535`](https://github.com/zainunkamal/sevima-mini/commit/4f04535) | Selesai (Diterima) |
 
 ---
 
@@ -323,3 +324,44 @@
   * Diagram Class Mermaid yang diperbarui: [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd).
   * Diagram Sequence PMB Mermaid yang diperbarui: [`diagrams/sequence-pmb.mmd`](../diagrams/sequence-pmb.mmd).
   * File visualisasi SVG: [`docs/sequence/pmb_sequence_diagram.svg`](../docs/sequence/pmb_sequence_diagram.svg).
+
+---
+
+### 🔹 Log 10: Hardening Sequence Diagram KRS: Concurrency, ACID & Async Lifecycle Berbasis OPAR (Observe, Plan, Act, Reflect)
+* **Minggu:** `2`
+* **Fitur:** Mitigasi 5 Kelemahan Arsitektural Sequence KRS (Atomic Capacity Reservation, Transaction Scope & Rollback, Pemisahan Sesi Asinkron Dosen PA, Konsolidasi Event Notifikasi, dan Transaksi Kompensasi)
+* **LLM/Tool:** `Gemini 3.8 Flash`
+* **Kode AI awal:** [`4f04535`](https://github.com/zainunkamal/sevima-mini/commit/4f04535)
+* **Revisi manual:** `-`
+* **Prompt Kunci:**
+  ```text
+  "Kritik diagram berikut sebagai senior architect. Sebutkan 5 kelemahan terbesar,
+  urutkan dari yang paling berisiko, beri saran perbaikan"
+  
+  "oke kamu perbaiki dan jangan lupa masukin ke log"
+  ```
+* **Metodologi OPAR:**
+  * 👁️ **Observe (Observasi):**
+    * Ditemukan kerentanan kritis *Race Condition (TOCTOU)* pada pengecekan kuota kelas (`Schedule.getKapasitas()` pasif) yang memicu *overselling* saat beban puncak (*War KRS*).
+    * Ketiadaan batasan transaksi eksplisit (*Transaction Scope*) pada proses persistensi basis data, berisiko meninggalkan *orphan records* dan inkonsistensi status rencana studi saat terjadi galat commit.
+    * Terjadi *Temporal Coupling*: penggabungan siklus *synchronous request-response* pengajuan mahasiswa dengan evaluasi persetujuan Dosen PA yang pada kenyataannya berlangsung secara asinkron pada sesi waktu berbeda.
+    * Terdapat *Architectural Pattern Smell* pada modul notifikasi berupa duplikasi pemanggilan direct push dan event observer ke aktor yang sama.
+    * Ketiadaan mekanisme transaksi kompensasi pembatalan alokasi kuota ketika rule validasi berikutnya atau database commit mengalami kegagalan.
+  * 📋 **Plan (Rencana):**
+    * Menambahkan method `+reserveKapasitas() bool` dan `+releaseKapasitas() void` pada entitas `Schedule` di Class Diagram untuk mengenkapsulasi penguncian atomik dan transaksi kompensasi.
+    * Mengganti pengecekan kuota pasif dengan eksekusi `reserveKapasitas()` di Tahap 3. Jika gagal, lepaskan alokasi slot kelas yang sempat di-reserve sebelumnya.
+    * Menyematkan batasan transaksi eksplisit `DB.beginTransaction()`, `DB.commitTransaction()`, dan `DB.rollbackTransaction()` yang dibarengi pelepasan kuota via `releaseKapasitas()`.
+    * Memisahkan Tahap 8 secara visual dan semantik menggunakan pembatas tegas: `SESI ASINKRON TERPISAH`.
+    * Mengonsolidasikan pengiriman notifikasi ke `NotificationService` sebagai *Single Dispatcher*, mengeliminasi duplikasi pemanggilan manual `kirimNotifikasi` langsung dari service layer.
+  * ⚡ **Act (Tindakan / Aksi):**
+    * Memperbarui [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd) dengan menambahkan `reserveKapasitas()` dan `releaseKapasitas()` pada class `Schedule`.
+    * Menulis ulang [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd) dengan seluruh 5 perbaikan arsitektural di atas.
+    * Memperbarui dokumentasi teknis [`docs/sequence/SEQUENCE-001-pmb-and-krs.md`](../docs/sequence/SEQUENCE-001-pmb-and-krs.md) dan meregenerasi visualisasi SVG [`docs/sequence/krs_sequence_diagram.svg`](../docs/sequence/krs_sequence_diagram.svg).
+    * Memvalidasi sintaks diagram menggunakan `@mermaid-js/mermaid-cli` (Exit Code 0).
+  * 💡 **Reflect (Refleksi):**
+    * Sequence diagram KRS kini memenuhi kualifikasi *Enterprise-Grade Architecture*: tangguh terhadap lonjakan konkurensi ekstrem, menjamin integritas data ACID melalui transaksi kompensasi, serta mengeliminasi kerancuan siklus hidup bisnis asinkron.
+    * Penambahan kontrak `reserveKapasitas` dan `releaseKapasitas` memperkuat *Domain-Driven Design (DDD)*, di mana aturan integritas agregat dipertahankan langsung oleh entitas yang memiliki status tersebut.
+* **Hasil / Luaran:**
+  * Diagram Class Mermaid yang diperbarui: [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd).
+  * Diagram Sequence KRS Mermaid yang diperbarui: [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd).
+  * File visualisasi SVG: [`docs/sequence/krs_sequence_diagram.svg`](../docs/sequence/krs_sequence_diagram.svg).

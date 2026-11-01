@@ -1,0 +1,101 @@
+flowchart LR
+    %% Styling Definisi
+    classDef actor fill:#e8f4f8,stroke:#0288d1,stroke-width:2px,color:#01579b,font-weight:bold;
+    classDef usecase fill:#ffffff,stroke:#37474f,stroke-width:1.5px,color:#212121;
+    classDef included fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1.5px,stroke-dasharray: 4 2,color:#4a148c;
+    classDef extended fill:#fff3e0,stroke:#e65100,stroke-width:1.5px,stroke-dasharray: 4 2,color:#bf360c;
+
+    %% Aktor Kiri (Mahasiswa & Sistem PMB)
+    subgraph Aktor_Kiri [" "]
+        direction TB
+        MHS["👤 Mahasiswa"]:::actor
+        PMB["🏢 Sistem PMB<br/><i>(Sistem Eksternal)</i>"]:::actor
+    end
+    style Aktor_Kiri fill:none,stroke:none
+
+    %% Batasan Sistem (System Boundary)
+    subgraph SIAKAD ["🏛️ Sistem Informasi Akademik (SIAKAD Mini)"]
+        direction TB
+
+        subgraph Modul_PMB ["Modul Registrasi & Admisi"]
+            UC_Daftar(["Daftar Kuliah"]):::usecase
+            UC_UploadBerkas(["Unggah Berkas Persyaratan"]):::included
+            UC_SinkronPMB(["Sinkronisasi Data Mahasiswa"]):::usecase
+        end
+
+        subgraph Modul_Keuangan ["Modul Keuangan"]
+            UC_Bayar(["Bayar Biaya Kuliah"]):::usecase
+            UC_Dispensasi(["Ajukan Keringanan / Cicilan"]):::extended
+            UC_CekBayar(["Validasi Status Pembayaran"]):::included
+        end
+
+        subgraph Modul_KRS ["Modul Rencana Studi (KRS)"]
+            UC_IsiKRS(["Isi KRS"]):::usecase
+            UC_CekPrasyarat(["Validasi Prasyarat Mata Kuliah"]):::included
+            UC_BatalTambah(["Revisi / Batal-Tambah KRS"]):::extended
+            UC_CetakKRS(["Cetak Bukti KRS"]):::extended
+            UC_ApproveKRS(["Validasi & Persetujuan KRS"]):::usecase
+            UC_TolakKRS(["Tolak KRS dengan Catatan"]):::extended
+        end
+
+        subgraph Modul_Nilai ["Modul Penilaian & Hasil Studi"]
+            UC_InputNilai(["Input Nilai Mahasiswa"]):::usecase
+            UC_HitungNilai(["Kalkulasi Nilai Akhir & Mutu"]):::included
+            UC_SanggahNilai(["Proses Sanggah Nilai"]):::extended
+            UC_LihatKHS(["Lihat Kartu Hasil Studi (KHS)"]):::usecase
+            UC_GenTranskrip(["Generate Transkrip Nilai"]):::usecase
+            UC_HitungIPK(["Kalkulasi IPK & SKS Kumulatif"]):::included
+            UC_ExportTranskrip(["Export Transkrip Resmi (PDF)"]):::extended
+        end
+
+        subgraph Modul_Admin ["Modul Administrasi Akademik"]
+            UC_KelolaKurikulum(["Kelola Kurikulum & Mata Kuliah"]):::usecase
+            UC_KelolaJadwal(["Kelola Alokasi Jadwal"]):::usecase
+            UC_KelolaUser(["Kelola Data Pengguna"]):::usecase
+        end
+    end
+
+    %% Aktor Kanan (Dosen & Admin)
+    subgraph Aktor_Kanan [" "]
+        direction TB
+        DSN["👨‍🏫 Dosen<br/><i>(Pengajar & Dosen Wali)</i>"]:::actor
+        ADM["👨‍💼 Admin<br/><i>(Administrator Sistem)</i>"]:::actor
+    end
+    style Aktor_Kanan fill:none,stroke:none
+
+    %% Relasi Asosiasi Aktor Mahasiswa
+    MHS --- UC_Daftar
+    MHS --- UC_Bayar
+    MHS --- UC_IsiKRS
+    MHS --- UC_LihatKHS
+    MHS --- UC_GenTranskrip
+
+    %% Relasi Asosiasi Aktor Sistem PMB
+    PMB --- UC_Daftar
+    PMB --- UC_SinkronPMB
+
+    %% Relasi Asosiasi Aktor Dosen
+    DSN --- UC_ApproveKRS
+    DSN --- UC_InputNilai
+    DSN --- UC_GenTranskrip
+
+    %% Relasi Asosiasi Aktor Admin
+    ADM --- UC_SinkronPMB
+    ADM --- UC_KelolaKurikulum
+    ADM --- UC_KelolaJadwal
+    ADM --- UC_KelolaUser
+
+    %% Relasi <<include>> (Base UC -> Included UC)
+    UC_Daftar -. "<<include>>" .-> UC_UploadBerkas
+    UC_IsiKRS -. "<<include>>" .-> UC_CekBayar
+    UC_IsiKRS -. "<<include>>" .-> UC_CekPrasyarat
+    UC_InputNilai -. "<<include>>" .-> UC_HitungNilai
+    UC_GenTranskrip -. "<<include>>" .-> UC_HitungIPK
+
+    %% Relasi <<extend>> (Extending UC -> Base UC)
+    UC_Dispensasi -. "<<extend>>" .-> UC_Bayar
+    UC_BatalTambah -. "<<extend>>" .-> UC_IsiKRS
+    UC_CetakKRS -. "<<extend>>" .-> UC_IsiKRS
+    UC_TolakKRS -. "<<extend>>" .-> UC_ApproveKRS
+    UC_SanggahNilai -. "<<extend>>" .-> UC_InputNilai
+    UC_ExportTranskrip -. "<<extend>>" .-> UC_GenTranskrip

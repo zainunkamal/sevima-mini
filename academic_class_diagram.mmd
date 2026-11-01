@@ -1,0 +1,161 @@
+classDiagram
+    direction TB
+
+    %% Interfaces (ISP & DIP)
+    class IAuthenticatable {
+        <<interface>>
+        +login(credentials: string) bool
+        +logout() void
+        +resetPassword(newPassword: string) bool
+    }
+
+    class IGradeEvaluator {
+        <<interface>>
+        +calculateFinalScore(grade: Grade) float
+        +convertToLetterGrade(score: float) string
+    }
+
+    class IEnrollmentObserver {
+        <<interface>>
+        +onEnrollmentStatusChanged(enrollment: Enrollment, newStatus: string) void
+        +onGradeUpdated(enrollment: Enrollment, grade: Grade) void
+    }
+
+    %% Base Class (SRP & LSP)
+    class User {
+        <<abstract>>
+        #string id
+        #string username
+        #string email
+        #string passwordHash
+        #DateTime createdAt
+        +getId() string
+        +getUsername() string
+        +getEmail() string
+    }
+
+    %% Subclasses dari User
+    class Mahasiswa {
+        -string nim
+        -int semester
+        -string statusAkademik
+        -float ipk
+        +getNim() string
+        +lihatKRS() List~Enrollment~
+        +lihatKHS() List~Grade~
+        +onEnrollmentStatusChanged(enrollment: Enrollment, newStatus: string) void
+        +onGradeUpdated(enrollment: Enrollment, grade: Grade) void
+    }
+
+    class Dosen {
+        -string nidn
+        -string spesialisasi
+        +getNidn() string
+        +inputNilai(enrollment: Enrollment, grade: Grade) void
+        +lihatJadwalMengajar() List~Schedule~
+    }
+
+    class Admin {
+        -string levelAkses
+        -List~string~ permissions
+        +kelolaUser(user: User) void
+        +kelolaKurikulum(course: Course) void
+    }
+
+    class CalonMahasiswa {
+        -string noPendaftaran
+        -string jalurMasuk
+        -string statusSeleksi
+        +uploadDokumen(berkasPath: string) void
+        +cekStatusPendaftaran() string
+    }
+
+    %% Factory Pattern
+    class UserFactory {
+        +createUser(role: string, data: Map) User
+    }
+
+    %% Academic Domain Core
+    class Course {
+        -string kode
+        -string nama
+        -int sks
+        -string deskripsi
+        +getKode() string
+        +getNama() string
+        +getSks() int
+        +tambahPrasyarat(course: Course) void
+        +validasiPrasyarat(mahasiswa: Mahasiswa) bool
+    }
+
+    class Schedule {
+        -string hari
+        -string jam
+        -string ruangan
+        -int kapasitas
+        +getHari() string
+        +getJam() string
+        +getRuangan() string
+        +cekBentrok(other: Schedule) bool
+    }
+
+    class Enrollment {
+        -string idEnrollment
+        -DateTime tanggalDaftar
+        -string status
+        -List~IEnrollmentObserver~ observers
+        +getIdEnrollment() string
+        +getStatus() string
+        +batalkanEnrollment() void
+        +getGrade() Grade
+        +attachObserver(observer: IEnrollmentObserver) void
+        +notifyGradeUpdated() void
+        +setGradeEvaluator(evaluator: IGradeEvaluator) void
+    }
+
+    class Grade {
+        -float nilaiTugas
+        -float nilaiUTS
+        -float nilaiUAS
+        -float nilaiAkhir
+        -string nilaiHuruf
+        +hitungNilaiAkhir(evaluator: IGradeEvaluator) float
+        +getNilaiHuruf() string
+        +updateNilai(tugas: float, uts: float, uas: float) void
+    }
+
+    %% Concrete Strategies (Strategy Pattern)
+    class StandardGradeEvaluator {
+        +calculateFinalScore(grade: Grade) float
+        +convertToLetterGrade(score: float) string
+    }
+
+    class PracticumGradeEvaluator {
+        +calculateFinalScore(grade: Grade) float
+        +convertToLetterGrade(score: float) string
+    }
+
+    %% Relationships
+    User ..|> IAuthenticatable
+    Mahasiswa ..|> IEnrollmentObserver
+    StandardGradeEvaluator ..|> IGradeEvaluator
+    PracticumGradeEvaluator ..|> IGradeEvaluator
+
+    User <|-- Mahasiswa
+    User <|-- Dosen
+    User <|-- Admin
+    User <|-- CalonMahasiswa
+
+    UserFactory ..> User : instantiates
+
+    %% Composition (*--) - Strong lifecycle coupling
+    Enrollment "1" *-- "1" Grade : contains
+    Course "1" *-- "1..*" Schedule : defines
+
+    %% Aggregation (o--) - Weak lifecycle coupling
+    Course "0..*" o-- "0..*" Course : prasyarat
+    Mahasiswa "1" o-- "0..*" Enrollment : registers
+    Course "1" o-- "0..*" Enrollment : offers
+    Dosen "1" o-- "0..*" Course : teaches
+    Enrollment "0..*" o-- "0..*" IEnrollmentObserver : observes
+    Enrollment ..> IGradeEvaluator : delegates evaluation

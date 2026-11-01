@@ -8,6 +8,9 @@ Dokumen arsitektur dan perancangan berorientasi objek untuk sistem informasi aka
 * 📑 **Dokumentasi ADR:** [`ADR-001: Desain Struktur Class Domain Akademik dan Relasi Entitas`](file:///home/zainun/Git/istn/sevima-mini/docs/adr/ADR-001-academic-system-class-structure.md)
 * 🎯 **Diagram UML Use Case (Mermaid):** [`academic_usecase_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_usecase_diagram.mmd)
 * 📑 **Spesifikasi Use Case:** [`USECASE-001: Spesifikasi & Diagram Use Case SIAKAD Mini`](file:///home/zainun/Git/istn/sevima-mini/docs/usecase/USECASE-001-academic-system.md)
+* 🔄 **Diagram UML Sequence PMB (Mermaid):** [`academic_pmb_sequence_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_pmb_sequence_diagram.mmd)
+* 🔄 **Diagram UML Sequence Validasi KRS (Mermaid):** [`academic_krs_sequence_diagram.mmd`](file:///home/zainun/Git/istn/sevima-mini/academic_krs_sequence_diagram.mmd)
+* 📑 **Spesifikasi Sequence:** [`SEQUENCE-001: Desain Sequence Diagram PMB dan Validasi KRS`](file:///home/zainun/Git/istn/sevima-mini/docs/sequence/SEQUENCE-001-pmb-and-krs.md)
 
 ## 📌 Ringkasan Prinsip & Pola Desain
 

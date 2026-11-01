@@ -16,6 +16,7 @@
 | **6** | Minggu 2 | Audit & Refactoring Class Diagram (OPAR) | Gemini 3.8 Flash | [`52372f7`](https://github.com/zainunkamal/sevima-mini/commit/52372f7) | Selesai (Diterima) |
 | **7** | Minggu 2 | Refactoring Use Case Diagram & Standardisasi Dosen PA (OPAR) | Gemini 3.8 Flash | [`ad28839`](https://github.com/zainunkamal/sevima-mini/commit/ad28839) | Selesai (Diterima) |
 | **8** | Minggu 2 | Refactoring Sequence Diagram KRS Multi-Rule & Alt-Flows (OPAR) | Gemini 3.8 Flash | [`73781a2`](https://github.com/zainunkamal/sevima-mini/commit/73781a2) | Selesai (Diterima) |
+| **9** | Minggu 2 | Refactoring Sequence Diagram PMB Multi-Alt-Flows & Pemisahan NIMGenerator (OPAR) | Gemini 3.8 Flash | [`2ec94c1`](https://github.com/zainunkamal/sevima-mini/commit/2ec94c1) | Selesai (Diterima) |
 
 ---
 
@@ -269,3 +270,56 @@
 * **Hasil / Luaran:**
   * Diagram Sequence KRS Mermaid yang diperbarui: [`diagrams/sequence-krs.mmd`](../diagrams/sequence-krs.mmd).
   * File visualisasi SVG: [`docs/sequence/krs_sequence_diagram.svg`](../docs/sequence/krs_sequence_diagram.svg).
+
+---
+
+### 🔹 Log 09: Refactoring Sequence Diagram PMB Multi-Alternate Flows & Pemisahan NIMGenerator Berbasis OPAR (Observe, Plan, Act, Reflect)
+* **Minggu:** `2`
+* **Fitur:** Penyempurnaan Sequence Diagram PMB dengan Validasi Form 400, Email Duplikat 409, Berkas Invalid, Calon Ditolak, Pemisahan NIMGenerator dari UserFactory (SRP), Standardisasi Status pending/approved/rejected, dan Pengiriman Tautan Aktivasi
+* **LLM/Tool:** `Gemini 3.8 Flash`
+* **Kode AI awal:** [`2ec94c1`](https://github.com/zainunkamal/sevima-mini/commit/2ec94c1)
+* **Revisi manual:** `-`
+* **Prompt Kunci:**
+  ```text
+  "Audit diagram sequence-pmb berikut terhadap konsistensi dan prinsip SOLID.
+  Periksa:
+  1. Participant/method di sequence yang tidak ada di class diagram
+  2. Use case yang tidak punya sequence, atau sebaliknya
+  3. Pelanggaran SRP (class dengan terlalu banyak tanggung jawab)
+  4. Alternate flow yang hilang di tiap sequence
+  Format: tabel (Masalah | Diagram | Rekomendasi). Jangan ubah diagram dulu."
+  
+  "saya mau tambahan untuk perbaikan diatas
+  Tambahkan alt/opt: validasi form gagal (400), email duplikat (409), berkas tidak valid,
+  calon ditolak. Pisahkan NIMGenerator dari UserFactory. Ganti pengiriman password dengan
+  tautan aktivasi. Gunakan status: pending / approved / rejected."
+  ```
+* **Metodologi OPAR:**
+  * 👁️ **Observe (Observasi):**
+    * Diagram sequence PMB sebelumnya tidak memiliki blok *alternate flows* sama sekali (100% *happy path*), mengabaikan skenario kegagalan krusial seperti validasi kelengkapan form, email terduplikasi, dokumen unggahan korup/salah format, serta penolakan calon mahasiswa oleh admin admisi.
+    * Class `UserFactory` memikul tanggung jawab ganda (pelanggaran SRP): menghitung algoritma pembentukan format NIM sekaligus menginstansiasi objek `Mahasiswa`.
+    * Pengiriman kredensial berupa password polos (*plain text password*) melanggar prinsip keamanan dasar; seharusnya menggunakan tautan aktivasi akun mandiri (*activation token/link*).
+    * Terminologi status belum terstandarisasi seragam (`"PENDING_SELEKSI"`, `"LULUS"`).
+  * 📋 **Plan (Rencana):**
+    * Memisahkan class `NIMGenerator` dari `UserFactory` pada Class Diagram dan Sequence Diagram. `PMBService` memanggil `NIMGenerator.generateNIM()` lalu melewatkan hasilnya ke `UserFactory.createUser()`.
+    * Menambahkan method `getAntreanSeleksi()` pada `PMBService` di Class Diagram untuk mengakomodasi akses antrean seleksi pendaftar oleh Admin Admisi.
+    * Menyematkan 4 skenario *alternate flow* komprehensif:
+      1. Alt Flow 1: Validasi form gagal &rarr; HTTP 400 Bad Request.
+      2. Alt Flow 2: Email terduplikasi &rarr; HTTP 409 Conflict.
+      3. Alt Flow 3: Berkas dokumen tidak valid (format &ne; PDF/JPG atau ukuran > 2MB).
+      4. Alt Flow 4: Calon mahasiswa ditolak oleh Admin (`status="rejected"`).
+    * Menstandarisasi nilai status seleksi admisi menjadi: `pending`, `approved`, `rejected`.
+    * Mengganti pengiriman password dengan mekanisme generasi tautan aktivasi akun via `NotificationService.kirimNotifikasi()`.
+  * ⚡ **Act (Tindakan / Aksi):**
+    * Memperbarui [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd) dengan memisahkan `NIMGenerator` dari `UserFactory`, menambahkan relasi `PMBService ..> NIMGenerator`, serta menambahkan `getAntreanSeleksi()`.
+    * Menulis ulang [`diagrams/sequence-pmb.mmd`](../diagrams/sequence-pmb.mmd) dengan seluruh tahapan, *alternate flows*, dan participant `NIMGenerator` serta `NotificationService`.
+    * Memperbarui dokumentasi arsitektur [`docs/sequence/SEQUENCE-001-pmb-and-krs.md`](../docs/sequence/SEQUENCE-001-pmb-and-krs.md) dan meregenerasi visualisasi SVG [`docs/sequence/pmb_sequence_diagram.svg`](../docs/sequence/pmb_sequence_diagram.svg).
+    * Memvalidasi sintaks diagram menggunakan `@mermaid-js/mermaid-cli` (Exit Code 0).
+  * 💡 **Reflect (Refleksi):**
+    * Pemisahan `NIMGenerator` mengembalikan kepatuhan penuh terhadap prinsip **Single Responsibility Principle (SRP)**: Factory murni bertugas untuk instansiasi objek, sedangkan logika algoritma penomoran institusional terisolasi di domain generator.
+    * Penerapan status standar (`pending`, `approved`, `rejected`) menyederhanakan *State Machine* admisi pendaftar dan selaras dengan pola RESTful API.
+    * Penggantian password polos dengan tautan aktivasi mengadopsi standar industri keamanan informasi (*Identity & Access Management - IAM*), mencegah eksfiltrasi kredensial pengguna pada log transaksi.
+* **Hasil / Luaran:**
+  * Diagram Class Mermaid yang diperbarui: [`diagrams/class-diagram.mmd`](../diagrams/class-diagram.mmd).
+  * Diagram Sequence PMB Mermaid yang diperbarui: [`diagrams/sequence-pmb.mmd`](../diagrams/sequence-pmb.mmd).
+  * File visualisasi SVG: [`docs/sequence/pmb_sequence_diagram.svg`](../docs/sequence/pmb_sequence_diagram.svg).

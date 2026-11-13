@@ -1,6 +1,6 @@
 # Dokumentasi Riwayat Perbaikan Class Diagram UML - SEVIMA Mini
 
-Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sistem informasi akademik **SEVIMA Mini** dari Versi 1 hingga Versi 3.
+Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sistem informasi akademik **SEVIMA Mini** dari Versi 1 hingga Versi 4.
 
 ---
 
@@ -32,26 +32,39 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 - **Perubahan Utama:**
   - **Uji Wadah-Bagian (*Lifecycle Dependency*):**
     - `Course` $\rightarrow$ `Enrollment`: Diubah dari Agregasi (`o--`) menjadi **Asosiasi (`-->`)**, karena `Course` katalog bukan wadah dari transaksi pendaftaran `Enrollment`.
-    - `Dosen` $\rightarrow$ `Course`: Diubah dari Agregasi (`o--`) menjadi **Asosiasi (`-->`)**, karena relasi murni peran mengajar (bukan *whole-part*).
+    - `Dosen` $\rightarrow$ `Course`: Diubah dari Agregasi (`o--`) menjadi **Asosiasi (`-->`)**, karena relasi murni peran mengajar.
     - `Course` $\rightarrow$ `Course` (Prasyarat): Diubah dari Agregasi (`o--`) menjadi **Asosiasi (`-->`)** antar sesama entitas mata kuliah setara (*self-referencing association*).
   - **Koreksi Kardinalitas:**
-    - `Course "1" *-- "0..*" Schedule`: Batas minimum jadwal diubah dari `1..*` menjadi `0..*` agar mata kuliah baru di katalog kurikulum dapat dibuat sebelum jadwal perkuliahan disusun.
-  - **Retensi Komposisi Kuat (`*--`):**
-    - `Mahasiswa "1" *-- "0..*" Enrollment` (KRS lenyap jika mahasiswa dihapus).
-    - `Enrollment "1" *-- "0..1" Grade` (Nilai lenyap jika enrollment dibatalkan/dihapus).
-    - `Mahasiswa "1" *-- "0..*" Payment` (Tagihan SPP terikat pada mahasiswa).
-    - `Course "1" *-- "0..*" Schedule` (Jadwal kelas terikat pada mata kuliah penawaran).
+    - `Course "1" *-- "0..*" Schedule`: Batas minimum jadwal diubah dari `1..*` menjadi `0..*`.
 
 ---
 
-## Tabel Komparasi Evolusi Versi
+## 4. Versi 4: Perbaikan Arsitektur Kritis 1-4
+![Versi 4 - Perbaikan Arsitektur Kritis 1-4](diagram_versi_4.png)
 
-| Komponen / Relasi | Versi 1 (Awal) | Versi 2 (Enkapsulasi) | Versi 3 (Refactor Relasi) |
-| :--- | :--- | :--- | :--- |
-| **Atribut `User`** | `protected (#)` | `private (-)` + getter/setter | `private (-)` + getter/setter |
-| **Method `Mahasiswa`** | Tanpa `hitungIPK()` | Ditambahkan `+hitungIPK() double` | Memiliki `+hitungIPK() double` |
-| **`Course` - `Enrollment`** | `Course "1" o-- "0..*" Enrollment` | `Course "1" o-- "0..*" Enrollment` | **`Course "1" --> "0..*" Enrollment` (Association)** |
-| **`Dosen` - `Course`** | `Dosen "1" o-- "0..*" Course` | `Dosen "1" o-- "0..*" Course` | **`Dosen "1" --> "0..*" Course` (Association)** |
-| **`Course` - `Course` (Prasyarat)** | `Course "0..*" o-- "0..*" Course` | `Course "0..*" o-- "0..*" Course` | **`Course "0..*" --> "0..*" Course` (Association)** |
-| **`Course` - `Schedule`** | `Course "1" *-- "1..*" Schedule` | `Course "1" *-- "1..*" Schedule` | **`Course "1" *-- "0..*" Schedule` (0..*)** |
-| **Komposisi Kuat** | Ada (Enrollment, Grade, Payment) | Ada (Enrollment, Grade, Payment) | Dipertahankan & Divalidasi |
+- **Perubahan Utama:**
+  1. **Integrasi Jadwal Riil (Mengatasi Masalah 1):**
+     - Menghubungkan `Schedule "1" --> "0..*" Enrollment : diikuti` agar mahasiswa terdaftar pada sesi/ruangan spesifik, memungkinkan pengecekan bentrok jadwal riil via `Enrollment.cekBentrokJadwal()`.
+     - Menghubungkan `Dosen "1" --> "0..*" Schedule : mengajar` agar fungsionalitas `Dosen.lihatJadwalMengajar()` memiliki sumber data jam dan ruangan yang valid.
+  2. **Transisi Siklus Hidup PMB (Mengatasi Masalah 2):**
+     - Menambahkan method `CalonMahasiswa.konversiKeMahasiswa(nimBaru, prodi): Mahasiswa`.
+     - Menambahkan relasi asosiasi transisi peran `CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai`.
+  3. **Pemutusan Ketergantungan Siklik (Mengatasi Masalah 3):**
+     - Mengubah signature `Course.cekPrasyarat(Mahasiswa mhs)` menjadi `Course.cekPrasyarat(String[] kodeMatkulLulus): boolean`.
+     - Menghapus ketergantungan langsung `Course` terhadap `Mahasiswa`, sehingga kurikulum independen dari model mahasiswa.
+  4. **Klarifikasi Tanggung Jawab KRS & SKS (Mengatasi Masalah 4):**
+     - Menambahkan delegasi `Enrollment.getSks(): int`.
+     - Menjadikan validasi batas 24 SKS dan duplikasi matkul berbasis semester spesifik pada `Mahasiswa` (`validasiBebanKRS(int semester)`, `cekDuplikasiCourse(kodeCourse, semester)`).
+
+---
+
+## Tabel Komparasi Riwayat Versi
+
+| Evaluasi Arsitektural | Versi 1 | Versi 2 | Versi 3 | Versi 4 (Final Refactor) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Enkapsulasi Atribut** | `protected (#)` | `private (-)` | `private (-)` | `private (-)` |
+| **Method `hitungIPK()`** | Tidak ada | Ada di `Mahasiswa` | Ada di `Mahasiswa` | Ada di `Mahasiswa` |
+| **Keterhubungan `Schedule`** | Hanya ke `Course` | Hanya ke `Course` | Hanya ke `Course` | **Terhubung ke `Enrollment` & `Dosen`** |
+| **Siklus Hidup PMB** | Subclass kaku | Subclass kaku | Subclass kaku | **Asosiasi & Method Konversi ke `Mahasiswa`** |
+| **Coupling `Course`-`Mahasiswa`**| Siklik (Course butuh Mahasiswa) | Siklik | Siklik | **Terputus (Course hanya butuh `String[]`)** |
+| **Tanggung Jawab KRS** | Ambigu | Ambigu | Ambigu | **SKS didelegasikan, validasi semester terstruktur** |

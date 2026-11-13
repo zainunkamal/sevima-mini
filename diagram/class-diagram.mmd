@@ -22,11 +22,12 @@ classDiagram
         +getProgramStudi() String
         +getSemester() int
         +hitungIPK() double
-        +hitungTotalSKS() int
-        +validasiMaksimalSKS(int sksTambahan) boolean
-        +cekPendaftaranGanda(String kodeCourse) boolean
+        +hitungTotalSKS(int semester) int
+        +validasiBebanKRS(int semester) boolean
+        +cekDuplikasiCourse(String kodeCourse, int semester) boolean
         +tambahEnrollment(Enrollment enrollment) boolean
-        +lihatKHS() void
+        +getDaftarMatkulLulus() String[]
+        +lihatKHS(int semester) void
     }
 
     class Dosen {
@@ -53,6 +54,7 @@ classDiagram
         +getStatusSeleksi() String
         +daftarSeleksi() void
         +lihatPengumuman() String
+        +konversiKeMahasiswa(String nimBaru, String prodi) Mahasiswa
     }
 
     class Course {
@@ -63,7 +65,7 @@ classDiagram
         +getNama() String
         +getSks() int
         +tambahPrasyarat(Course course) void
-        +cekPrasyarat(Mahasiswa mhs) boolean
+        +cekPrasyarat(String[] kodeMatkulLulus) boolean
     }
 
     class Enrollment {
@@ -74,9 +76,10 @@ classDiagram
         +getTahunAkademik() String
         +getStatus() String
         +setStatus(String status) void
+        +getSks() int
         +ajukanKRS() void
         +batalkanKRS() void
-        +validasiAturanKRS() boolean
+        +cekBentrokJadwal(Enrollment other) boolean
     }
 
     class Schedule {
@@ -123,5 +126,7 @@ classDiagram
     Mahasiswa "1" *-- "0..*" Payment : memiliki
     Course "1" *-- "0..*" Schedule : memiliki
     Course "1" --> "0..*" Enrollment : didaftarkan
+    Schedule "1" --> "0..*" Enrollment : diikuti
+    Dosen "1" --> "0..*" Schedule : mengajar
     Course "0..*" --> "0..*" Course : prasyarat
-    Dosen "1" --> "0..*" Course : mengampu
+    CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai

@@ -1,6 +1,6 @@
-# Class Diagram UML - SEVIMA Mini (Versi 3: Refactor Relasi)
+# Class Diagram UML - SEVIMA Mini (Versi 4: Perbaikan Arsitektur Kritis 1-4)
 
-Diagram kelas UML untuk sistem informasi akademik kampus kecil **SEVIMA Mini** yang mencakup modul PMB, KRS, Jadwal, Nilai, dan Pembayaran SPP setelah dilakukan evaluasi uji wadah (*lifecycle dependency*) dan uji *is-a*.
+Diagram kelas UML untuk sistem informasi akademik kampus kecil **SEVIMA Mini** yang telah disempurnakan berdasarkan hasil kritik arsitektural terhadap kelemahan kritis 1 hingga 4.
 
 ```mermaid
 classDiagram
@@ -27,11 +27,12 @@ classDiagram
         +getProgramStudi() String
         +getSemester() int
         +hitungIPK() double
-        +hitungTotalSKS() int
-        +validasiMaksimalSKS(int sksTambahan) boolean
-        +cekPendaftaranGanda(String kodeCourse) boolean
+        +hitungTotalSKS(int semester) int
+        +validasiBebanKRS(int semester) boolean
+        +cekDuplikasiCourse(String kodeCourse, int semester) boolean
         +tambahEnrollment(Enrollment enrollment) boolean
-        +lihatKHS() void
+        +getDaftarMatkulLulus() String[]
+        +lihatKHS(int semester) void
     }
 
     class Dosen {
@@ -58,6 +59,7 @@ classDiagram
         +getStatusSeleksi() String
         +daftarSeleksi() void
         +lihatPengumuman() String
+        +konversiKeMahasiswa(String nimBaru, String prodi) Mahasiswa
     }
 
     class Course {
@@ -68,7 +70,7 @@ classDiagram
         +getNama() String
         +getSks() int
         +tambahPrasyarat(Course course) void
-        +cekPrasyarat(Mahasiswa mhs) boolean
+        +cekPrasyarat(String[] kodeMatkulLulus) boolean
     }
 
     class Enrollment {
@@ -79,9 +81,10 @@ classDiagram
         +getTahunAkademik() String
         +getStatus() String
         +setStatus(String status) void
+        +getSks() int
         +ajukanKRS() void
         +batalkanKRS() void
-        +validasiAturanKRS() boolean
+        +cekBentrokJadwal(Enrollment other) boolean
     }
 
     class Schedule {
@@ -128,25 +131,26 @@ classDiagram
     Mahasiswa "1" *-- "0..*" Payment : memiliki
     Course "1" *-- "0..*" Schedule : memiliki
     Course "1" --> "0..*" Enrollment : didaftarkan
+    Schedule "1" --> "0..*" Enrollment : diikuti
+    Dosen "1" --> "0..*" Schedule : mengajar
     Course "0..*" --> "0..*" Course : prasyarat
-    Dosen "1" --> "0..*" Course : mengampu
+    CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai
 ```
 
-## Spesifikasi & Desain OOP (Versi 3)
+## Spesifikasi Solusi Perbaikan Arsitektur (Versi 4)
 
-### 1. Prinsip SOLID & Enkapsulasi
-- **Single Responsibility Principle (SRP):** Setiap kelas memiliki tanggung jawab tunggal dengan jumlah method $\le 9$ (tidak ada kelas $> 10$ method).
-- **Enkapsulasi:** Seluruh atribut ber-visibility private (`-`) dengan tipe data eksplisit, dan diakses secara terkontrol melalui method public (`+`).
-- **Penempatan `hitungIPK()`:** Ditempatkan khusus pada kelas `Mahasiswa` (bukan di `User`).
+### 1. Solusi Masalah 1: Integrasi Jadwal Riil (`Schedule`, `Enrollment`, `Dosen`)
+- **`Schedule "1" --> "0..*" Enrollment : diikuti`**: `Enrollment` (KRS) kini terhubung langsung ke sesi alokasi `Schedule`. Mahasiswa mengetahui ruang dan jam perkuliahan secara pasti, dan `Enrollment.cekBentrokJadwal(other)` dapat dijalankan dengan akurat.
+- **`Dosen "1" --> "0..*" Schedule : mengajar`**: Dosen terhubung langsung ke sesi jadwal, sehingga fungsionalitas `Dosen.lihatJadwalMengajar()` memiliki sumber data yang valid untuk ruang dan waktu mengajar.
 
-### 2. Hubungan Antar Kelas & Kardinalitas (Hasil Uji Wadah & Is-A)
-- **Inheritance (`<|--`):** `User` sebagai abstract class diturunkan ke `Mahasiswa`, `Dosen`, `Admin`, dan `CalonMahasiswa` (lulus uji *is-a*).
-- **Composition (`*--`) Relasi Kuat (Wadah hilang $\rightarrow$ Bagian ikut hilang):**
-  - `Mahasiswa "1" *-- "0..*"` `Enrollment`: Riwayat enrollment terikat mutlak pada siklus hidup data mahasiswa.
-  - `Enrollment "1" *-- "0..1"` `Grade`: Nilai tidak dapat berdiri sendiri tanpa enrollment.
-  - `Mahasiswa "1" *-- "0..*"` `Payment`: Catatan tagihan SPP terikat pada mahasiswa.
-  - `Course "1" *-- "0..*"` `Schedule`: Alokasi jadwal perkuliahan terikat pada penawaran mata kuliah (kardinalitas `0..*` mengakomodasi matkul baru di katalog).
-- **Association (`-->`) Relasi Referensial/Peran (Bukan Wadah Whole-Part):**
-  - `Course "1" --> "0..*"` `Enrollment`: Enrollment merujuk ke Course katalog, Course bukan wadah dari Enrollment.
-  - `Course "0..*" --> "0..*"` `Course`: Relasi mata kuliah prasyarat (*self-referencing association* antar entitas setara).
-  - `Dosen "1" --> "0..*"` `Course`: Asosiasi peran instruktur mengampu mata kuliah.
+### 2. Solusi Masalah 2: Penanganan Transisi Siklus Hidup `CalonMahasiswa` $\rightarrow$ `Mahasiswa`
+- **Method `konversiKeMahasiswa(String nimBaru, String prodi): Mahasiswa`**: Mengakomodasi mutasi peran calon mahasiswa yang diterima menjadi mahasiswa resmi tanpa merusak identitas akun atau membuat kelas di luar requirement.
+- **Relasi Asosiasi `CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai`**: Menghubungkan riwayat pendaftaran PMB dengan entitas mahasiswa yang terdaftar.
+
+### 3. Solusi Masalah 3: Pemutusan Ketergantungan Siklik (*Circular Dependency*)
+- **`Course.cekPrasyarat(String[] kodeMatkulLulus)`**: Menggantikan parameter `Mahasiswa` dengan array kode mata kuliah lulus (`String[]`).
+- `Course` kini sepenuhnya terisolasi dan mandiri (tidak lagi bergantung pada representasi data kelas `Mahasiswa`).
+
+### 4. Solusi Masalah 4: Klarifikasi Tanggung Jawab Dokumen KRS & SKS
+- **Delegasi SKS pada `Enrollment` (`+getSks(): int`)**: Memungkinkan penghitungan SKS langsung dari asosiasi mata kuliah.
+- **Pengaturan Tanggung Jawab Semesteran pada `Mahasiswa`**: Menambahkan parameter semester pada `hitungTotalSKS(semester)`, `validasiBebanKRS(semester)` (maks 24 SKS), dan `cekDuplikasiCourse(kodeCourse, semester)`.

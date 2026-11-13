@@ -1,38 +1,57 @@
-# Bukti Perbandingan Diagram (Sebelum vs Sesudah Perbaikan)
+# Dokumentasi Riwayat Perbaikan Class Diagram UML - SEVIMA Mini
 
-Dokumen ini memuat screenshot bukti visual class diagram UML **SEVIMA Mini** sebelum dan sesudah dilakukannya perbaikan spesifikasi OOP.
-
----
-
-## 1. Diagram Sebelum Dirubah (Versi Awal)
-![Diagram Sebelum Dirubah](diagram_sebelum_dirubah.png)
-
-### Karakteristik Versi Awal:
-- **Visibility Atribut `User`:** Menggunakan `protected (#)` untuk `id`, `username`, dan `email`.
-- **Method `User`:** Hanya memiliki `+login()` dan `+logout()`, belum memiliki accessor public (`getId()`, `getUsername()`, `getEmail()`, `setEmail()`, `ubahPassword()`).
-- **Kelas `Mahasiswa`:** Belum memiliki method penghitungan IPK (`hitungIPK()`).
-- **Accessor Kelas Turunan/Entitas:** Kelas `Admin`, `Enrollment`, dan `Payment` belum dilengkapi accessor eksplisit untuk atribut-atribut privatenya.
+Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sistem informasi akademik **SEVIMA Mini** dari Versi 1 hingga Versi 3.
 
 ---
 
-## 2. Diagram Sesudah Dirubah (Versi Perbaikan)
-![Diagram Sesudah Dirubah](diagram_sesudah_dirubah.png)
+## 1. Versi 1: Versi Awal
+![Versi 1 - Versi Awal](diagram_sebelum_dirubah.png)
 
-### Karakteristik Versi Perbaikan:
-- **Enkapsulasi Ketat (Strict Private):** Seluruh atribut pada semua kelas diubah menjadi `private (-)`.
-- **Accessor Public Lengkap:** Disediakan getter dan setter publik pada `User`, `Admin`, `Enrollment`, dan `Payment`.
-- **Penambahan `hitungIPK()`:** Method `+hitungIPK() double` ditambahkan khusus pada kelas `Mahasiswa` (tidak berada di `User`).
-- **Single Responsibility Principle (SRP):** Setiap kelas tetap memiliki jumlah method $\le 9$ (di bawah batas 10 method).
-- **Struktur Kelas:** Tetap 10 kelas tanpa menambah kelas baru di luar spesifikasi.
+- **Karakteristik:**
+  - Menggunakan visibility `protected (#)` pada atribut `User` (`id`, `username`, `email`).
+  - Belum memiliki accessor publik (`getId()`, `getUsername()`, dll) pada `User`.
+  - Belum memiliki method penghitungan IPK (`hitungIPK()`) pada `Mahasiswa`.
+  - Menggunakan agregasi (`o--`) untuk relasi non-komposisi.
 
 ---
 
-## 3. Ringkasan Perbedaan Detail
+## 2. Versi 2: Enkapsulasi Penuh & Penambahan `hitungIPK()`
+![Versi 2 - Enkapsulasi](diagram_sesudah_dirubah.png)
 
-| Komponen / Kelas | Sebelum Perbaikan | Sesudah Perbaikan |
-| :--- | :--- | :--- |
-| **User (Abstract)** | `#id`, `#username`, `-password`, `#email`<br>`+login()`, `+logout()` | `-id`, `-username`, `-password`, `-email`<br>`+login()`, `+logout()`, `+getId()`, `+getUsername()`, `+getEmail()`, `+setEmail()`, `+ubahPassword()` |
-| **Mahasiswa** | 8 method (tanpa hitung IPK) | 9 method (ditambahkan `+hitungIPK() double`) |
-| **Admin** | 4 method (tanpa `getStaffId()`) | 5 method (ditambahkan `+getStaffId() String`) |
-| **Enrollment** | 5 method (tanpa getter semester/thn) | 7 method (ditambahkan `+getSemester() int`, `+getTahunAkademik() String`) |
-| **Payment** | 5 method (tanpa getter tgl bayar) | 6 method (ditambahkan `+getTanggalBayar() String`) |
+- **Perubahan Utama:**
+  - Enkapsulasi ketat: seluruh atribut dijadikan `private (-)`.
+  - Penambahan method publik accessor/mutator pada `User`, `Admin`, `Enrollment`, dan `Payment`.
+  - Penambahan method khusus `+hitungIPK() double` pada kelas `Mahasiswa` (bukan di `User`).
+  - Pembatasan jumlah method tetap $\le 9$ (SRP compliant).
+
+---
+
+## 3. Versi 3: Refactoring Relasi (Hasil Uji Wadah & Is-A)
+![Versi 3 - Refactoring Relasi](diagram_versi_3.png)
+
+- **Perubahan Utama:**
+  - **Uji Wadah-Bagian (*Lifecycle Dependency*):**
+    - `Course` $\rightarrow$ `Enrollment`: Diubah dari Agregasi (`o--`) menjadi **Asosiasi (`-->`)**, karena `Course` katalog bukan wadah dari transaksi pendaftaran `Enrollment`.
+    - `Dosen` $\rightarrow$ `Course`: Diubah dari Agregasi (`o--`) menjadi **Asosiasi (`-->`)**, karena relasi murni peran mengajar (bukan *whole-part*).
+    - `Course` $\rightarrow$ `Course` (Prasyarat): Diubah dari Agregasi (`o--`) menjadi **Asosiasi (`-->`)** antar sesama entitas mata kuliah setara (*self-referencing association*).
+  - **Koreksi Kardinalitas:**
+    - `Course "1" *-- "0..*" Schedule`: Batas minimum jadwal diubah dari `1..*` menjadi `0..*` agar mata kuliah baru di katalog kurikulum dapat dibuat sebelum jadwal perkuliahan disusun.
+  - **Retensi Komposisi Kuat (`*--`):**
+    - `Mahasiswa "1" *-- "0..*" Enrollment` (KRS lenyap jika mahasiswa dihapus).
+    - `Enrollment "1" *-- "0..1" Grade` (Nilai lenyap jika enrollment dibatalkan/dihapus).
+    - `Mahasiswa "1" *-- "0..*" Payment` (Tagihan SPP terikat pada mahasiswa).
+    - `Course "1" *-- "0..*" Schedule` (Jadwal kelas terikat pada mata kuliah penawaran).
+
+---
+
+## Tabel Komparasi Evolusi Versi
+
+| Komponen / Relasi | Versi 1 (Awal) | Versi 2 (Enkapsulasi) | Versi 3 (Refactor Relasi) |
+| :--- | :--- | :--- | :--- |
+| **Atribut `User`** | `protected (#)` | `private (-)` + getter/setter | `private (-)` + getter/setter |
+| **Method `Mahasiswa`** | Tanpa `hitungIPK()` | Ditambahkan `+hitungIPK() double` | Memiliki `+hitungIPK() double` |
+| **`Course` - `Enrollment`** | `Course "1" o-- "0..*" Enrollment` | `Course "1" o-- "0..*" Enrollment` | **`Course "1" --> "0..*" Enrollment` (Association)** |
+| **`Dosen` - `Course`** | `Dosen "1" o-- "0..*" Course` | `Dosen "1" o-- "0..*" Course` | **`Dosen "1" --> "0..*" Course` (Association)** |
+| **`Course` - `Course` (Prasyarat)** | `Course "0..*" o-- "0..*" Course` | `Course "0..*" o-- "0..*" Course` | **`Course "0..*" --> "0..*" Course` (Association)** |
+| **`Course` - `Schedule`** | `Course "1" *-- "1..*" Schedule` | `Course "1" *-- "1..*" Schedule` | **`Course "1" *-- "0..*" Schedule` (0..*)** |
+| **Komposisi Kuat** | Ada (Enrollment, Grade, Payment) | Ada (Enrollment, Grade, Payment) | Dipertahankan & Divalidasi |

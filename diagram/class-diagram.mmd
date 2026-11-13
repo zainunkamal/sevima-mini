@@ -119,9 +119,9 @@ classDiagram
     User <|-- CalonMahasiswa
 
     Mahasiswa "1" *-- "0..*" Enrollment : memiliki
-    Course "1" o-- "0..*" Enrollment : didaftarkan
     Enrollment "1" *-- "0..1" Grade : memiliki
     Mahasiswa "1" *-- "0..*" Payment : memiliki
-    Course "1" *-- "1..*" Schedule : memiliki
-    Course "0..*" o-- "0..*" Course : prasyarat
-    Dosen "1" o-- "0..*" Course : mengampu
+    Course "1" *-- "0..*" Schedule : memiliki
+    Course "1" --> "0..*" Enrollment : didaftarkan
+    Course "0..*" --> "0..*" Course : prasyarat
+    Dosen "1" --> "0..*" Course : mengampu

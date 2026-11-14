@@ -87,7 +87,7 @@
   Tinjau relasi pada class diagram tersebut:
   Untuk setiap relasi, tentukan jenis yang tepat (association, aggregation, composition, inheritance) dengan uji: "jika wadahnya dihapus, apakah bagiannya ikut hilang?". Periksa juga kardinalitas dan uji is-a pada setiap pewarisan. Sajikan dalam tabel: relasi | jenis sekarang | jenis seharusnya | alasan. Jangan mengubah diagram dulu.
   ```
-- **Output ringkas:** Tabel analisis lengkap relasi yang mengevaluasi uji wadah dan uji *is-a*, dilanjutkan dengan penerapan refactoring relasi ke Versi 3 pada [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) dan bukti visual [diagram_versi_3.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/diagram_versi_3.png).
+- **Output ringkas:** Tabel analisis lengkap relasi yang mengevaluasi uji wadah dan uji *is-a*, dilanjutkan dengan penerapan refactoring relasi ke Versi 3 pada [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) dan bukti visual [diagram_versi_3.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-01/diagram_versi_3.png).
 - **Masalah ditemukan:**
   1. Relasi `Course - Enrollment`, `Dosen - Course`, dan `Course - Course (Prasyarat)` tidak memenuhi kriteria wadah-bagian (*whole-part*) sehingga salah diklasifikasikan sebagai agregasi (`o--`), seharusnya asosiasi referensial (`-->`).
   2. Kardinalitas minimum jadwal `Course` ke `Schedule` terlalu restriktif (`1..*`), seharusnya `0..*` agar mata kuliah kurikulum baru dapat dibuat sebelum jadwal disusun.
@@ -110,7 +110,7 @@
   ```text
   Tinjau class diagram di atas. Sebutkan 5 kelemahan terbesar, diurutkan dari yang paling berisiko. Periksa khusus: God Object (kelas dengan terlalu banyak tanggung jawab), circular dependency, inheritance yang tidak lolos uji is-a, aggregation/composition tertukar, atribut yang seharusnya private tetapi public, kardinalitas yang salah, dan kelas yang tidak ada di requirement. Jangan memperbaiki dulu, hanya berikan kritik.
   ```
-- **Output ringkas:** Laporan kritik arsitektur 5 kelemahan terbesar sistem yang diurutkan berdasarkan risiko, dilanjutkan dengan penyelesaian 4 kelemahan paling kritis ke dalam diagram Versi 4 pada [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) dan bukti visual [diagram_versi_4.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/diagram_versi_4.png).
+- **Output ringkas:** Laporan kritik arsitektur 5 kelemahan terbesar sistem yang diurutkan berdasarkan risiko, dilanjutkan dengan penyelesaian 4 kelemahan paling kritis ke dalam diagram Versi 4 pada [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) dan bukti visual [diagram_versi_4.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-01/diagram_versi_4.png).
 - **Masalah ditemukan:**
   1. Terputusnya relasi jadwal: `Schedule` tidak terhubung ke `Enrollment` dan `Dosen` (*broken operational workflow*).
   2. Anti-pattern *subclassing a lifecycle state* pada `CalonMahasiswa` vs `Mahasiswa` (tidak ada transisi peran saat diterima).

@@ -90,7 +90,8 @@ sevima-mini/
 ├── alembic.ini                   # Konfigurasi utama Alembic
 ├── documents/                    # Dokumen keputusan arsitektural (ADR)
 │   ├── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
-│   └── ADR-002.pdf               # ADR: Modularitas Domain Service Layer
+│   ├── ADR-002.pdf               # ADR: Modularitas Domain Service Layer
+│   └── ADR-003.pdf               # ADR: Standardisasi Validasi Klien (HTTP 400 vs 422) & Integritas Relasional PMB
 └── logs/                         # Catatan transparansi penggunaan AI
     └── ai-usage-log.md           # Log interaksi AI dengan kerangka OPAR (Observe-Plan-Act-Reflect)
 ```
@@ -333,12 +334,14 @@ Rincian lengkap dan perbandingan visual dapat dilihat pada [perbaikan/README.md]
 
 Keputusan desain arsitektural penting dicatat menggunakan format ADR resmi:
 - **[ADR-001: Memecah Relasi Many-to-Many Mahasiswa-Course Menggunakan Kelas Perantara Enrollment](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf):** Menjelaskan analisis konteks, alternatif opsi (relasi langsung vs perantara), pertimbangan trade-off, serta catatan peran revisi manual manusia terhadap saran AI.
+- **[ADR-002: Memecah Arsitektur Menjadi Modular Service Layer Berbasis Modul Domain](file:///home/zainun/git/istn/sevima-mini/documents/ADR-002.pdf):** Menjelaskan eliminasi *God Object* pada `Admin` dan dekomposisi logika sistem ke dalam 7 domain service independen.
+- **[ADR-003: Standardisasi Penanganan Validasi Klien (HTTP 400 vs 422) dan Integritas Relasional Modul PMB](file:///home/zainun/git/istn/sevima-mini/documents/ADR-003.pdf):** Menjelaskan adopsi Opsi A (override `RequestValidationError` ke HTTP 400 disertai sinkronisasi Swagger UI), penegakan foreign key SQLite, urutan aman rollback Alembic, dan prinsip *Privacy by Design*.
 
 ---
 
 ## 🤖 Catatan Transparansi Penggunaan AI
 
-Seluruh interaksi bersama AI (Gemini 3.8 Flash) dicatat secara transparan pada [logs/ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md) dengan menerapkan siklus refleksi **OPAR (Observe - Plan - Act - Reflect)** untuk setiap iterasi prompt (Prompt #1 hingga #4).
+Seluruh interaksi bersama AI (Gemini 3.8 Flash) dicatat secara transparan pada [logs/ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md) dengan menerapkan siklus refleksi **OPAR (Observe - Plan - Act - Reflect)** untuk setiap iterasi prompt (Minggu 1 hingga Minggu 3).
 
 ---
 
@@ -348,4 +351,6 @@ Seluruh interaksi bersama AI (Gemini 3.8 Flash) dicatat secara transparan pada [
 - [Spesifikasi Class Diagram Lengkap](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 - [Source Code Mermaid Class Diagram](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd)
 - [Dokumen Keputusan Arsitektur ADR-001 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf)
+- [Dokumen Keputusan Arsitektur ADR-002 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-002.pdf)
+- [Dokumen Keputusan Arsitektur ADR-003 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-003.pdf)
 - [Log Penggunaan AI (OPAR)](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md)

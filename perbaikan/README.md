@@ -139,5 +139,5 @@ Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan t
 - Sequence Diagram Validasi KRS (Versi 2): [krs-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.mmd) & [krs-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.md)
 - Use Case Diagram (Versi 2): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
 - Kode Mermaid Class Diagram Versi 7: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
-- Dokumen Keputusan Arsitektur: [ADR-001.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf)
+- Dokumen Keputusan Arsitektur: [ADR-001.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf), [ADR-002.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-002.pdf), dan [ADR-003.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-003.pdf)
 - Catatan Transparansi AI: [ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md)

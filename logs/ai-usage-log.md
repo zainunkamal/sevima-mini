@@ -546,3 +546,27 @@
 - **Plan:** Mengimplementasikan Opsi A secara paripurna: memasang *exception interceptor* untuk runtime HTTP 400, sekaligus mengintersep generator OpenAPI agar skema dokumentasi Swagger `/docs` mencerminkan kontrak status respons yang sesungguhnya.
 - **Act:** Mengonfigurasi `validation_exception_handler` dan `custom_openapi` di `app/main.py`, menambahkan metadata `responses` di `app/routers/pmb.py`, memverifikasi 17 unit test lolos 100%, serta mendokumentasikan keputusan arsitektur.
 - **Reflect:** Keputusan arsitektur (ADR) yang matang harus memperhitungkan keselarasan antara *runtime behavior* dengan *documentation contracts*. Menyelaraskan skema OpenAPI saat melakukan override exception handler framework mencegah kebingungan tim frontend dan penguji API.
+
+---
+
+### Prompt #7 (versi: V7 - Penerbitan Dokumen Resmi ADR-003 Format PDF)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Menyusun dokumen Architecture Decision Record (ADR-003) dalam format PDF resmi untuk iterasi Minggu ke-3 yang mendokumentasikan keputusan standardisasi validasi klien (HTTP 400 vs 422), sinkronisasi Swagger UI, strategi validasi pertahanan berlapis (*Defense-in-Depth*), penegakan kunci asing SQLite, urutan aman rollback Alembic, dan privasi data calon mahasiswa (*Privacy by Design*).
+- **Prompt:**
+  ```text
+  oke buatkan ADR dengan format PDF untuk minggu ke 3
+  ```
+- **Output ringkas:**
+  1. Dokumen keputusan arsitektur resmi [documents/ADR-003.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-003.pdf) setebal 5 halaman berstandar A4 yang dihasilkan secara otomatis menggunakan engine LibreOffice headless.
+  2. Struktur ADR mencakup 7 bagian komprehensif: Konteks (7 isu kritis), Alternatif & Trade-off (Opsi A terpilih vs Opsi B ditolak), Keputusan (5 pilar teknis termasuk matriks pertahanan berlapis), Konsekuensi (positif & trade-offs), Pola Desain yang Diterapkan, Catatan Peran AI & Verifikasi Kritis, serta Referensi Terkait.
+  3. Pembaruan tautan dan katalog dokumentasi di [README.md](file:///home/zainun/git/istn/sevima-mini/README.md), [perbaikan/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/README.md), dan [perbaikan/minggu-03/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-03/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Dokumentasi Formal Berkelanjutan:** ADR-003 melengkapi rangkaian keputusan arsitektur sebelumnya (ADR-001 pemecahan relasi M:N Enrollment dan ADR-002 dekomposisi 7 service domain).
+  2. **Justifikasi Tertulis Deviasi Framework:** Mendokumentasikan secara formal alasan pemilihan Opsi A (override 400 & penghapusan 422 pada OpenAPI) agar arsitektur tetap transparan, dapat dipelihara (*maintainable*), dan dapat diaudit oleh pihak penguji.
+- **Commit terkait:** `[PENDING COMMIT HASH]` - `docs(adr): generate ADR-003 PDF document for Week 3 architectural decisions [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Pengambilan keputusan teknis seperti pengubahan exception handler, konfigurasi koneksi driver basis data, dan urutan DDL migrasi memerlukan justifikasi tertulis yang kokoh agar tidak dianggap sebagai anomali kode biasa.
+- **Plan:** Menyusun dokumen ADR-003 berformat PDF dengan standar tata letak profesional A4 yang memuat konteks teknis, perbandingan trade-off alternatif, keputusan implementasi berlapis, konsekuensi sistemik, pola arsitektur, dan transparansi peran AI.
+- **Act:** Menulis struktur dokumen ADR lengkap, merender ke PDF menggunakan LibreOffice headless, memverifikasi keterbacaan tipografi dan pemisahan halaman (5 halaman rapi tanpa teks terputus), memperbarui daftar ADR di README, dan mencatat log penggunaan AI.
+- **Reflect:** Dokumentasi arsitektur berbentuk ADR PDF yang rapi menjadi artefak audit yang sangat bernilai tinggi dalam rekayasa perangkat lunak skala enterprise, menjamin setiap keputusan teknis memiliki rekam jejak rasional yang teruji.

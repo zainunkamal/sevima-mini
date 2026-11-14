@@ -116,3 +116,10 @@ Berdasarkan audit teknis backend dan penelusuran kasus tepi regex, dilakukan pen
 Seluruh fungsionalitas telah divalidasi melalui 2 berkas pengujian otomatis (total 17 unit test lolos 100%):
 1. [test_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb.py): Menguji 7 skenario integritas skema basis data SQLite dan constraint.
 2. [test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py): Menguji 10 skenario endpoint FastAPI menggunakan `TestClient` (HTTP 201, 409, 400 referensi, 400 format validasi, 400 tanggal lahir masa depan, 400 regex HP non-seluler, 201 nomor humanis dengan spasi/strip, 201 nomor 9 digit lawas, dan 400 nomor premium 0809).
+
+---
+
+## 📜 Architectural Decision Record (ADR) Minggu 3
+
+Keputusan teknis dan arsitektural di atas telah dibukukan secara formal dalam dokumen resmi:
+- **[ADR-003: Standardisasi Penanganan Validasi Klien (HTTP 400 vs 422) dan Integritas Relasional Modul PMB](file:///home/zainun/git/istn/sevima-mini/documents/ADR-003.pdf)**: Dokumen keputusan arsitektur resmi dalam format PDF yang mendokumentasikan analisis perbandingan Opsi A vs Opsi B, strategi validasi pertahanan berlapis (*Defense-in-Depth*), penegakan kunci asing SQLite, urutan aman rollback Alembic, dan prinsip perlindungan privasi calon mahasiswa (*Privacy by Design*).

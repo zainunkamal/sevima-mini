@@ -282,21 +282,39 @@ Berdasarkan tinjauan kritis mendalam terhadap arsitektur konkurensi, telah dilak
 
 ---
 
+## 📌 Bagian 10: Penguatan Test Coverage (99% Coverage) & Eliminasi Asersi Lemah (Best Practices)
+
+Untuk memenuhi standar pengujian perangkat lunak tingkat *enterprise*, dilakukan audit cakupan kode (*coverage analysis*) menggunakan `pytest --cov=app --cov-branch --cov-report=term-missing`. Seluruh cabang yang belum tersentuh ditangani secara sistematis melalui penambahan suite [tests/test_coverage_edge_cases.py](file:///home/zainun/git/istn/sevima-mini/tests/test_coverage_edge_cases.py) dan penguatan asersi pada tes eksisting.
+
+### 1. Eliminasi Asersi Lemah (Weak Assertions)
+- **Status-Only Verification:** Endpoint persetujuan dan error 404 pada [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py) dan [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) diperkuat dengan memverifikasi isi payload JSON (status `approved`, regex format NIM, ketersediaan `approved_at`, dan detail pesan 404).
+- **Verifikasi Rollback Siklus Retry:** Pada `test_08_approve_retry_on_integrity_error`, dipasang `spy` pada `db.rollback` untuk membuktikan bahwa rollback benar-benar dieksekusi 2 kali sebelum percobaan ke-3 berhasil.
+- **Asersi Validasi Format Spesifik:** Pada `test_register_format_hp_salah` di [tests/test_pmb_pytest.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb_pytest.py), asersi substring umum diganti dengan verifikasi bahwa pesan error secara spesifik menyebut atribut `phone`.
+- **Invarian Database pada Idempotensi:** Pada `test_approve_idempotent`, ditambahkan asersi langsung ke tabel `nim_counter` untuk memastikan nilai `last_number` tidak bertambah saat approval dipanggil berulang kali.
+
+### 2. Pengujian Kasus Batas Kritis (Critical Edge Cases)
+1. **Retry Exhaustion (HTTP 409):** Menguji kondisi saat seluruh percobaan (3x) gagal karena `IntegrityError`, memastikan sistem melempar HTTP 409 Conflict dan melakukan rollback 3 kali.
+2. **Kuota 9999 Terlampaui (HTTP 400):** Menguji approval pendaftar saat baris counter sudah mencapai 9999 melalui endpoint `PUT /api/pmb/approve/{id}`.
+3. **Safety Net Konkurensi Registrasi:** Menguji penanganan `IntegrityError` saat commit registrasi (benturan unique email, foreign key, check constraint, dan fallback).
+4. **Validasi Batas Usia Bisnis (HTTP 400):** Menguji pendaftaran dengan usia < 14 tahun (ditolak) dan > 80 tahun (ditolak), serta memastikan `tanggal_lahir = None` diterima dengan aman.
+5. **Dialek Database MySQL & Fallback:** Menguji pembentukan statement atomic upsert `mysql_insert` pada dialek MySQL produksi serta fallback savepoint pada dialek lain.
+6. **Batas Transaksi `auto_commit=False`:** Menguji bahwa pemanggilan `approve()` dan `reject()` dengan `auto_commit=False` hanya melakukan `db.flush()` tanpa memanggil `db.commit()`.
+7. **Infrastruktur & Lifecycle:** Menguji penutupan koneksi `get_db()`, kepatuhan kustom OpenAPI schema (penghapusan respons 422 sesuai ADR-003), dan idempotensi skrip `seed_data()`.
+
+---
+
 ## 🧪 Bukti Pengujian Otomatis
 
 Implementasi telah diuji secara menyeluruh melalui kombinasi suite pengujian otomatis:
-1. [tests/test_pmb_pytest.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb_pytest.py) (7 skenario pytest):
-   - `test_register_sukses`: Registrasi berhasil HTTP 201 Created (privasi tersaring).
-   - `test_register_email_ganda`: Penolakan email duplikat HTTP 409 Conflict.
-   - `test_approve_generate_nim`: Penerbitan NIM sesuai regex 11 digit sekuensial (`^\d{4}001\d{4}$`).
-   - `test_approve_idempotent`: Idempotensi persetujuan ganda, NIM tetap, dan pendaftar berikutnya mendapatkan nomor urut **2 BUKAN 3**.
-   - `test_register_format_hp_salah`: Penolakan nomor HP tidak valid dengan HTTP 400 Bad Request (sesuai Opsi A / ADR-003).
-   - `test_approve_id_tidak_ada`: Penolakan approval ID fiktif HTTP 404 Not Found.
-   - `test_approve_pendaftar_rejected`: Penolakan approval terhadap calon berstatus rejected HTTP 409 Conflict.
-2. [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py) (9 skenario): Format NIM 11 digit zero-padded, independensi counter, batas kuota 9999, non-commit flush, dan retry mechanism.
-3. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) (10 skenario): Transisi state machine PMB (approve, reject, idempotensi, penolakan 409/400/404, serta self-healing approval anomali data).
-4. [tests/test_status_and_stats.py](file:///home/zainun/git/istn/sevima-mini/tests/test_status_and_stats.py) (3 skenario): Pengecekan status publik dan agregasi database-level `GROUP BY` dengan outer join.
-5. [tests/test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py) (10 skenario) & [tests/test_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb.py) (7 skenario).
+1. [tests/test_coverage_edge_cases.py](file:///home/zainun/git/istn/sevima-mini/tests/test_coverage_edge_cases.py) (22 skenario): Pengujian edge cases, retry exhaustion, kuota 9999, boundary validasi umur, dialek MySQL, dan auto_commit.
+2. [tests/test_pmb_pytest.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb_pytest.py) (7 skenario pytest): AAA pattern, database invariant idempotensi, dan error handling.
+3. [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py) (9 skenario): Format NIM 11 digit zero-padded, independensi counter, batas kuota 9999, non-commit flush, dan retry dengan rollback spy.
+4. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) (10 skenario): Transisi state machine PMB (approve, reject, idempotensi, penolakan 409/400/404, serta self-healing approval anomali data).
+5. [tests/test_status_and_stats.py](file:///home/zainun/git/istn/sevima-mini/tests/test_status_and_stats.py) (3 skenario): Pengecekan status publik dan agregasi database-level `GROUP BY` dengan outer join.
+6. [tests/test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py) (10 skenario) & [tests/test_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb.py) (7 skenario).
 
-Seluruh suite pengujian proyek (total **46 test pada runner Pytest** dan **39 test pada runner Unittest**) **lolos 100% tanpa error**.
+### Hasil Coverage Report:
+- Total Statements: **367**
+- Test Coverage: **99%**
+- Seluruh **68 tes pada runner Pytest** dan **39 tes pada runner Unittest** **lolos 100% tanpa error**.
 

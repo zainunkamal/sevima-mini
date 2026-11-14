@@ -198,10 +198,12 @@ class TestNimCounter(unittest.TestCase):
                 raise IntegrityError("Simulated unique conflict", None, None)
             return original_commit()
 
-        with patch.object(self.session, "commit", side_effect=flaky_commit):
+        with patch.object(self.session, "commit", side_effect=flaky_commit), \
+             patch.object(self.session, "rollback", wraps=self.session.rollback) as spy_rollback:
             result = approve_calon_mahasiswa(self.session, calon_id=calon.id, tahun=2026, max_retries=3)
             self.assertEqual(result.status, StatusPMB.APPROVED)
             self.assertEqual(attempts, 3)
+            self.assertEqual(spy_rollback.call_count, 2)
 
     def test_09_api_endpoint_approve_success(self):
         """Memastikan endpoint POST /api/pmb/calon-mahasiswa/{id}/approve berfungsi via HTTP TestClient."""

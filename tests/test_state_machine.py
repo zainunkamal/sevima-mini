@@ -152,6 +152,7 @@ class TestPMBStateMachine(unittest.TestCase):
         """PUT /api/pmb/approve/{id}: ID tidak ada mengembalikan 404 Not Found."""
         res = self.client.put("/api/pmb/approve/999999")
         self.assertEqual(res.status_code, 404)
+        self.assertIn("tidak ditemukan", res.json()["detail"].lower())
 
     def test_06_reject_pending_success(self):
         """PUT /api/pmb/reject/{id}: Transisi pending -> rejected mengembalikan 200."""
@@ -188,6 +189,7 @@ class TestPMBStateMachine(unittest.TestCase):
         """PUT /api/pmb/reject/{id}: ID tidak ada mengembalikan 404 Not Found."""
         res = self.client.put("/api/pmb/reject/999999")
         self.assertEqual(res.status_code, 404)
+        self.assertIn("tidak ditemukan", res.json()["detail"].lower())
 
     def test_10_approve_self_healing_when_approved_without_nim(self):
         """PUT /api/pmb/approve/{id}: Anomali data (status approved tapi nim None) diperbaiki dengan menerbitkan NIM."""

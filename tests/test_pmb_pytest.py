@@ -1,6 +1,8 @@
 import re
 from datetime import date
 import pytest
+from sqlalchemy import select
+from app.models.pmb import NimCounter
 
 
 def daftar(
@@ -97,12 +99,13 @@ def test_approve_generate_nim(client, prodi_ti, jalur_snbp):
     assert nim.endswith("0001")
 
 
-def test_approve_idempotent(client, prodi_ti, jalur_snbp):
+def test_approve_idempotent(client, db, prodi_ti, jalur_snbp):
     """
     Uji idempotensi approval:
     - Pendaftar A diapprove pertama kali -> NIM ...0001
     - Pendaftar A diapprove kedua kali -> tetap NIM ...0001 (generator tidak dipanggil ulang)
     - Pendaftar B diapprove -> mendapatkan nomor urut 2 (...0002), BUKAN 3!
+    - Invarian database: last_number di DB tepat bernilai 2
     """
     # Arrange: daftarkan Pendaftar A dan Pendaftar B
     res_a = daftar(client, prodi_id=prodi_ti.id, jalur_id=jalur_snbp.id, email="pendaftar.a@example.com")
@@ -130,12 +133,18 @@ def test_approve_idempotent(client, prodi_ti, jalur_snbp):
     assert nim_a_pertama == nim_a_kedua
     # 2. NIM Pendaftar B harus nomor urut 2 (0002), membuktikan counter tidak meloncat ke 3
     assert nim_b.endswith("0002")
+    # 3. Verifikasi invarian level database: last_number tetap 2
+    db.expire_all()
+    counter_db = db.scalar(select(NimCounter).where(NimCounter.kode_prodi == prodi_ti.kode))
+    assert counter_db is not None
+    assert counter_db.last_number == 2
 
 
 def test_register_format_hp_salah(client, prodi_ti, jalur_snbp):
     """
     Uji penolakan format nomor HP tidak valid:
     - Sesuai keputusan arsitektur (ADR-003 / Opsi A), error validasi format merespons HTTP 400 Bad Request
+    - Asersi ketat memeriksa bahwa pesan error secara spesifik menyebut field phone
     """
     # Arrange: siapkan nomor HP dengan format salah (misal awalan telepon kabel 021)
     hp_salah = "02178912345"
@@ -153,6 +162,7 @@ def test_register_format_hp_salah(client, prodi_ti, jalur_snbp):
     assert response.status_code == 400
     body = response.json()
     assert "tidak valid" in str(body).lower()
+    assert any("phone" in err.lower() or "nomor" in err.lower() for err in body.get("errors", []))
 
 
 def test_approve_id_tidak_ada(client):

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.pmb import PendaftarOut, RegisterRequest
-from app.services.pmb import register_calon_mahasiswa
+from app.services.pmb import approve_calon_mahasiswa, register_calon_mahasiswa
 
 router = APIRouter(prefix="/api/pmb", tags=["PMB"])
 
@@ -46,3 +46,29 @@ def register(
 ) -> PendaftarOut:
     """Menerima dan memproses pendaftaran calon mahasiswa baru (Thin Controller)."""
     return register_calon_mahasiswa(db, payload)
+
+
+@router.post(
+    "/calon-mahasiswa/{calon_id}/approve",
+    response_model=PendaftarOut,
+    status_code=status.HTTP_200_OK,
+    summary="Persetujuan Pendaftaran & Penerbitan NIM Calon Mahasiswa",
+    responses={
+        400: {
+            "description": "Status tidak valid atau kuota nomor urut NIM terlampaui",
+        },
+        404: {
+            "description": "Calon mahasiswa tidak ditemukan",
+        },
+        409: {
+            "description": "Konflik integritas data / gagal menerbitkan NIM setelah 3 kali retry",
+        },
+    },
+)
+def approve(
+    calon_id: int,
+    db: Session = Depends(get_db),
+) -> PendaftarOut:
+    """Menyetujui calon mahasiswa dan menerbitkan NIM otomatis dengan row-lock & retry."""
+    return approve_calon_mahasiswa(db, calon_id)
+

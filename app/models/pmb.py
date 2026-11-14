@@ -7,6 +7,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Integer,
     String,
     Text,
     func,
@@ -120,3 +121,16 @@ class CalonMahasiswa(Base):
 
     def __repr__(self) -> str:
         return f"<CalonMahasiswa(id={self.id}, email='{self.email}', status='{self.status}')>"
+
+
+class NimCounter(Base):
+    __tablename__ = "nim_counter"
+
+    # Composite Primary Key: kombinasi unik per tahun & kode prodi
+    tahun: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kode_prodi: Mapped[str] = mapped_column(String(3), primary_key=True)
+    last_number: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+    def __repr__(self) -> str:
+        return f"<NimCounter(tahun={self.tahun}, kode_prodi='{self.kode_prodi}', last_number={self.last_number})>"
+

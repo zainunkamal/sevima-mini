@@ -9,6 +9,7 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 - [minggu-01/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-01): Berisi seluruh artefak tangkapan layar (*screenshot*) bukti visual evolusi class diagram Versi 1 hingga Versi 4.
 - [minggu-02/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02): Berisi artefak visual Use Case Diagram SEVIMA Mini (Versi 1) dan perbaikan berikutnya.
 - [minggu-03/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-03): Berisi dokumentasi dan artefak implementasi basis data modul PMB (SQLAlchemy 2.0 & migrasi Alembic).
+- [minggu-04/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04): Berisi dokumentasi generator penomoran NIM multi-worker, model `NimCounter`, migrasi Alembic, serta manajemen konkurensi row-lock database.
 
 ---
 
@@ -140,4 +141,5 @@ Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan t
 - Use Case Diagram (Versi 2): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
 - Kode Mermaid Class Diagram Versi 7: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 - Dokumen Keputusan Arsitektur: [ADR-001.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf), [ADR-002.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-002.pdf), dan [ADR-003.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-003.pdf)
+- Dokumentasi Perbaikan Minggu 4 (NIM Generator & Concurrency): [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md)
 - Catatan Transparansi AI: [ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md)

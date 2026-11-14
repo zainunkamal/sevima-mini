@@ -570,3 +570,56 @@
 - **Plan:** Menyusun dokumen ADR-003 berformat PDF dengan standar tata letak profesional A4 yang memuat konteks teknis, perbandingan trade-off alternatif, keputusan implementasi berlapis, konsekuensi sistemik, pola arsitektur, dan transparansi peran AI.
 - **Act:** Menulis struktur dokumen ADR lengkap, merender ke PDF menggunakan LibreOffice headless, memverifikasi keterbacaan tipografi dan pemisahan halaman (5 halaman rapi tanpa teks terputus), memperbarui daftar ADR di README, dan mencatat log penggunaan AI.
 - **Reflect:** Dokumentasi arsitektur berbentuk ADR PDF yang rapi menjadi artefak audit yang sangat bernilai tinggi dalam rekayasa perangkat lunak skala enterprise, menjamin setiap keputusan teknis memiliki rekam jejak rasional yang teruji.
+
+---
+
+## AI Usage Log: Minggu 4
+
+### Prompt #1 (versi: V1 - Implementasi Generator NIM Multi-Worker, Model NimCounter, Migrasi Alembic, & Penanganan Konkurensi)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Mengimplementasikan fungsi `generate_nim` multi-worker dengan database row lock (`SELECT ... FOR UPDATE`), model `NimCounter` berbasis SQLAlchemy 2.0, skrip migrasi terkelola Alembic, mitigasi race condition inisialisasi awal via savepoint, penanganan `IntegrityError` dengan rollback & retry hingga 3 kali, serta integrasi endpoint persetujuan pendaftar PMB.
+- **Prompt:**
+  ```text
+  Anda adalah backend engineer Python senior.
+
+  Konteks: modul PMB "SEVIMA Mini". Stack: FastAPI, SQLAlchemy 2 (Mapped,
+  mapped_column, select() gaya 2.0), database MySQL (InnoDB) di produksi dan
+  SQLite di tes. Aplikasi berjalan dengan BANYAK WORKER (bukan satu proses),
+  jadi JANGAN pakai threading.Lock di Python.
+
+  Buat fungsi generate_nim(db, tahun, kode_prodi) -> str:
+  - Format: 4 digit tahun + 3 digit kode prodi + 4 digit nomor urut
+    (zero padding), tanpa strip. Contoh: 2025001001.
+  - Nomor urut dihitung ulang per kombinasi (tahun, kode_prodi), mulai dari 1.
+  - Gunakan tabel nim_counter (PK gabungan tahun + kode_prodi, kolom last_number)
+    dengan SELECT ... FOR UPDATE (row lock) di database.
+  - Fungsi TIDAK melakukan commit sendiri (cukup flush); transaksi milik endpoint.
+  - Batas nomor urut 9999; lewat batas -> raise error.
+  - Tambahkan unique constraint pada kolom nim, dan jelaskan cara menangani
+    IntegrityError dengan rollback dan retry maksimal 3 kali.
+  - Jelaskan: apa yang terjadi jika dua request datang bersamaan? Kapan kunci
+    dilepas?
+
+  Format output: kode fungsi + model NimCounter + migrasi Alembic untuk
+  tabel nim_counter, lalu penjelasan singkat.
+  ```
+- **Output ringkas:**
+  1. Model deklaratif ORM `NimCounter` di [app/models/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/models/pmb.py) dengan *Composite Primary Key* `(tahun, kode_prodi)` dan kolom `last_number` (Integer, default 0).
+  2. Skrip migrasi terkelola di [app/alembic/versions/20261114_0002_create_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/app/alembic/versions/20261114_0002_create_nim_counter.py) dengan fungsi DDL `upgrade()` dan `downgrade()`.
+  3. Implementasi fungsi `generate_nim` pada [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py) yang menggunakan kueri modern `select(NimCounter).where(...).with_for_update()` (row-level X-lock di InnoDB), penanganan inisialisasi awal konkuren via `with db.begin_nested():` (SAVEPOINT), validasi kuota 9999 (`NimLimitExceededError`), dan eksekusi `db.flush()` tanpa commit internal.
+  4. Implementasi fungsi `approve_calon_mahasiswa` dan rute endpoint `POST /api/pmb/calon-mahasiswa/{calon_id}/approve` di [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py) dengan pola penanganan `IntegrityError` / `OperationalError` melalui `db.rollback()` dan percobaan ulang (*retry*) maksimal 3 kali.
+  5. Suite pengujian unit otomatis di [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py) mencakup 9 skenario uji (format 11 digit zero-padded, isolasi counter per tahun/prodi, batas 9999, non-commit flush, idempotensi approval, retry IntegrityError, dan endpoint TestClient).
+  6. Dokumentasi komprehensif analisis konkurensi, siklus kunci InnoDB, dan spesifikasi arsitektur di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md) dan sinkronisasi [perbaikan/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/README.md) serta [README.md](file:///home/zainun/git/istn/sevima-mini/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Delegasi Serialisasi ke DBMS (Eliminasi `threading.Lock`):** Pada arsitektur multi-worker di mana tiap worker berjalan sebagai proses OS terpisah, penjaminan urutan dan keunikan harus dilakukan di level DBMS melalui row-level lock (`SELECT ... FOR UPDATE`), bukan in-memory lock aplikasi.
+  2. **Boundary Transaksi Bersih (No Internal Commit):** `generate_nim` mematuhi prinsip transaksi atomik dengan hanya memanggil `db.flush()`. Endpoint pemanggil memiliki kendali penuh untuk melakukan commit atau rollback jika terjadi kegagalan pada langkah bisnis selanjutnya.
+  3. **Mitigasi Race Condition Inisialisasi Counter:** Penggunaan nested transaction / savepoint saat baris counter pertama kali dimasukkan mencegah timbulnya deadlock antar-worker akibat gap-locking di MySQL InnoDB.
+  4. **Resilient Retry Loop:** Mengamankan transaksi persetujuan pendaftar dengan loop retry maksimal 3 kali dan `db.rollback()` segera untuk membebaskan lock dan membersihkan state session.
+- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `feat(pmb): implement multi-worker NIM generator with row lock, NimCounter model, and retry mechanism [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Pada aplikasi multi-worker, penomoran berurutan rawan memicu duplikasi akibat race condition jika mengandalkan in-memory lock. Selain itu, fungsi penomoran yang melakukan commit mandiri merusak prinsip atomisitas transaksi endpoint.
+- **Plan:** Merancang tabel `nim_counter` dengan composite primary key `(tahun, kode_prodi)`, memanfaatkan `SELECT ... FOR UPDATE` untuk serialisasi row-level di InnoDB (dan kompatibel aman dengan SQLite pengujian), menerapkan flush-only dalam fungsi generator, serta membungkus alur approval dengan mekanisme retry 3 kali.
+- **Act:** Mengimplementasikan model deklaratif ORM `NimCounter`, membuat migrasi Alembic `20261114_0002`, menulis fungsi `generate_nim` dan `approve_calon_mahasiswa`, mengekspos endpoint FastAPI, menambahkan 9 unit test komprehensif (seluruh 26 unit test lolos 100%), serta mendokumentasikan analisis konkurensi di folder perbaikan Minggu 4.
+- **Reflect:** Menyerahkan tanggung jawab penguncian konkurensi ke database engine dan menjaga boundary transaksi tetap di tangan endpoint menghasilkan sistem backend yang *robust*, terhindar dari nomor urut bolong/duplikat, serta siap dijalankan pada skala produksi multi-worker.
+

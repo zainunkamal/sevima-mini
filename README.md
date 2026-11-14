@@ -75,23 +75,33 @@ sevima-mini/
 │   │   ├── krs_approval_sequence_diagram_versi_1.png # Screenshot Sequence Approve/Revisi KRS
 │   │   ├── payment_sequence_diagram_versi_1.png      # Screenshot Sequence Pembayaran SPP
 │   │   └── grading_transcript_sequence_diagram_versi_1.png # Screenshot Sequence Penilaian/Transkrip
-│   └── minggu-03/                # Dokumentasi implementasi basis data modul PMB
-│       └── README.md             # Spesifikasi model SQLAlchemy 2.0 & migrasi Alembic
+│   ├── minggu-03/                # Dokumentasi implementasi basis data modul PMB
+│   │   └── README.md             # Spesifikasi model SQLAlchemy 2.0 & migrasi Alembic
+│   └── minggu-04/                # Dokumentasi generator NIM multi-worker & konkurensi
+│       └── README.md             # Spesifikasi NimCounter, row lock, dan retry mechanism
 ├── app/                          # Kode sumber backend aplikasi (Python/SQLAlchemy 2.0)
 │   ├── database.py               # Setup engine, session, dan SQLite PRAGMA listener
 │   ├── models/                   # Definisi model deklaratif ORM
 │   │   ├── __init__.py           # Package registry model
-│   │   └── pmb.py                # Model ProgramStudi, JalurMasuk, CalonMahasiswa
+│   │   └── pmb.py                # Model ProgramStudi, JalurMasuk, CalonMahasiswa, NimCounter
+│   ├── schemas/                  # Skema validasi & DTO Pydantic
+│   ├── services/                 # Lapisan domain service & generator NIM
+│   ├── routers/                  # Router controller FastAPI
 │   └── alembic/                  # Konfigurasi dan berkas migrasi skema basis data
 │       ├── env.py                # Environment runner Alembic dengan SQLite PRAGMA hook
 │       ├── script.py.mako        # Template migrasi
 │       └── versions/             # Riwayat migrasi versi basis data
-│           └── 20261114_0001_create_pmb_tables.py # Migrasi awal 3 tabel PMB
+│           ├── 20261114_0001_create_pmb_tables.py # Migrasi awal 3 tabel PMB
+│           └── 20261114_0002_create_nim_counter.py # Migrasi tabel nim_counter
 ├── alembic.ini                   # Konfigurasi utama Alembic
 ├── documents/                    # Dokumen keputusan arsitektural (ADR)
 │   ├── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
 │   ├── ADR-002.pdf               # ADR: Modularitas Domain Service Layer
 │   └── ADR-003.pdf               # ADR: Standardisasi Validasi Klien (HTTP 400 vs 422) & Integritas Relasional PMB
+├── tests/                        # Suite pengujian otomatis (unittest)
+│   ├── test_pmb.py               # Pengujian integritas basis data & constraints
+│   ├── test_api_pmb.py           # Pengujian endpoint FastAPI register & DTO
+│   └── test_nim_counter.py       # Pengujian generator NIM multi-worker, row lock & retry
 └── logs/                         # Catatan transparansi penggunaan AI
     └── ai-usage-log.md           # Log interaksi AI dengan kerangka OPAR (Observe-Plan-Act-Reflect)
 ```

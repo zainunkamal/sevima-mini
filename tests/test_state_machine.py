@@ -58,11 +58,18 @@ class TestPMBStateMachine(unittest.TestCase):
         self.session.commit()
 
         # Seed program studi & jalur
-        self.prodi_valid = ProgramStudi(kode="001", nama="Teknik Informatika", fakultas="FTI")
-        self.prodi_invalid_huruf = ProgramStudi(kode="TIF", nama="Teknik Informatika Huruf", fakultas="FTI")
-        self.prodi_invalid_2digit = ProgramStudi(kode="12", nama="Prodi 2 Digit", fakultas="FTI")
+        self.prodi_valid = ProgramStudi(kode="001", nama="Teknik Informatika Angka", fakultas="FTI")
+        self.prodi_valid_huruf = ProgramStudi(kode="TIF", nama="Teknik Informatika", fakultas="FTI")
+        self.prodi_invalid_2digit = ProgramStudi(kode="12", nama="Prodi 2 Karakter", fakultas="FTI")
+        self.prodi_invalid_4digit = ProgramStudi(kode="1234", nama="Prodi 4 Karakter", fakultas="FTI")
         self.jalur = JalurMasuk(nama="Mandiri")
-        self.session.add_all([self.prodi_valid, self.prodi_invalid_huruf, self.prodi_invalid_2digit, self.jalur])
+        self.session.add_all([
+            self.prodi_valid,
+            self.prodi_valid_huruf,
+            self.prodi_invalid_2digit,
+            self.prodi_invalid_4digit,
+            self.jalur,
+        ])
         self.session.commit()
 
     def tearDown(self):
@@ -121,19 +128,25 @@ class TestPMBStateMachine(unittest.TestCase):
         self.assertEqual(res.status_code, 409)
         self.assertIn("rejected", res.json()["detail"].lower())
 
-    def test_04_approve_invalid_prodi_kode_returns_400(self):
-        """PUT /api/pmb/approve/{id}: Kode prodi bukan 3 digit angka mengembalikan 400 Bad Request."""
-        # Uji prodi dengan huruf 'TIF' (bukan 3 digit angka)
-        calon_huruf = self._create_calon(prodi_id=self.prodi_invalid_huruf.id, email="huruf@example.com")
-        res_huruf = self.client.put(f"/api/pmb/approve/{calon_huruf.id}")
-        self.assertEqual(res_huruf.status_code, 400)
-        self.assertIn("3 digit angka", res_huruf.json()["detail"])
+    def test_04_approve_prodi_kode_validation(self):
+        """PUT /api/pmb/approve/{id}: Kode prodi 3 karakter (TIF atau 001) berhasil, panjang bukan 3 ditolak 400."""
+        # 1. Uji prodi dengan huruf 'TIF' (3 karakter valid) -> SUKSES 200
+        calon_tif = self._create_calon(prodi_id=self.prodi_valid_huruf.id, email="tif@example.com")
+        res_tif = self.client.put(f"/api/pmb/approve/{calon_tif.id}")
+        self.assertEqual(res_tif.status_code, 200)
+        self.assertIn("TIF", res_tif.json()["nim"])
 
-        # Uji prodi 2 digit '12'
+        # 2. Uji prodi 2 karakter '12' -> GAGAL 400
         calon_2digit = self._create_calon(prodi_id=self.prodi_invalid_2digit.id, email="2digit@example.com")
         res_2digit = self.client.put(f"/api/pmb/approve/{calon_2digit.id}")
         self.assertEqual(res_2digit.status_code, 400)
-        self.assertIn("3 digit angka", res_2digit.json()["detail"])
+        self.assertIn("3 karakter alfanumerik", res_2digit.json()["detail"])
+
+        # 3. Uji prodi 4 karakter '1234' -> GAGAL 400
+        calon_4digit = self._create_calon(prodi_id=self.prodi_invalid_4digit.id, email="4digit@example.com")
+        res_4digit = self.client.put(f"/api/pmb/approve/{calon_4digit.id}")
+        self.assertEqual(res_4digit.status_code, 400)
+        self.assertIn("3 karakter alfanumerik", res_4digit.json()["detail"])
 
     def test_05_approve_not_found_returns_404(self):
         """PUT /api/pmb/approve/{id}: ID tidak ada mengembalikan 404 Not Found."""

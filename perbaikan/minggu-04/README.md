@@ -177,10 +177,10 @@ Pada iterasi lanjutan Minggu 4, diimplementasikan mesin keadaan (*State Machine*
 - **Idempotent Approve:** Jika pendaftar yang sudah berstatus `approved` dipanggil kembali melalui `PUT /approve/{id}`, sistem mengembalikan kode **`HTTP 200 OK`** beserta NIM yang sudah ada **TANPA memanggil generator NIM kembali**. Ini menjamin nomor urut counter tidak meloncat.
 - **Idempotent Reject:** Jika pendaftar yang sudah berstatus `rejected` dipanggil kembali melalui `PUT /reject/{id}`, sistem mengembalikan kode **`HTTP 200 OK`** secara aman tanpa memodifikasi data.
 
-### 3. Validasi Ketat Kode Prodi 3 Digit
+### 3. Validasi Presisi Kode Prodi 3 Karakter Alfanumerik
 Sebelum menerbitkan NIM pada alur `approve`, sistem memverifikasi bahwa:
 1. Program studi wajib terdaftar di basis data (respons `HTTP 400 Bad Request` jika tidak ditemukan).
-2. Kode program studi wajib berupa **3 digit angka** (`len == 3` dan `isdigit()`, misal: `'001'`). Jika kode berisi huruf (misal: `'TIF'`) atau panjangnya tidak sama dengan 3 digit, sistem melempar **`HTTP 400 Bad Request`**.
+2. Kode program studi wajib berupa **3 karakter alfanumerik** (`len == 3` dan `isalnum()`, seperti `'TIF'`, `'SIF'`, maupun `'001'`). Hal ini memastikan keselarasan penuh dengan master data `ProgramStudi` bawaan sistem (di mana `TIF` adalah Teknik Informatika), sekaligus secara tegas menolak kode yang panjangnya bukan 3 karakter (misal `'12'` atau `'1234'`) dengan respons **`HTTP 400 Bad Request`**.
 
 ### 4. Thin Controller & Privacy by Design
 - Seluruh logika transisi dan transaksi diisolasi di dalam `PMBService` pada [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py), sehingga router [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py) tetap tipis (*thin controller*).

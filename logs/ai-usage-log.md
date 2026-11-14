@@ -662,4 +662,42 @@
 - **Act:** Mengimplementasikan method `PMBService.approve` dan `PMBService.reject`, menambahkan handler route pada `app/routers/pmb.py`, menyusun 9 unit test baru di `tests/test_state_machine.py`, mengeksekusi suite unit test (35/35 lolos), serta memperbarui dokumen perbaikan dan log AI.
 - **Reflect:** Mengombinasikan state machine berbasis transisi ketat, row locking, dan idempotensi menghasilkan API yang aman terhadap *concurrency bugs*, stabil saat terjadi *network retries* dari klien, serta mematuhi prinsip kebersihan arsitektur rekayasa perangkat lunak modern.
 
+---
+
+### Prompt #3 (versi: V3 - Penyelarasan Validasi Kode Prodi 3 Karakter Alfanumerik pada Approval PMB)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Mengatasi kendala penolakan validasi HTTP 400 saat menyetujui calon mahasiswa dengan kode prodi 'TIF' (Teknik Informatika). Menyelaraskan aturan validasi agar menerima kode prodi 3 karakter alfanumerik (`isalnum()` dan `len == 3`, seperti 'TIF', 'SIF', '001') sesuai model basis data `ProgramStudi`, sembari tetap menolak kode yang panjangnya bukan 3 karakter.
+- **Prompt:**
+  ```text
+  terdapat error pada approve 
+  {
+    "detail": "Kode program studi 'TIF' tidak valid. Kode prodi harus terdiri dari 3 digit angka."
+  }
+  padahal saya mengguanakan data dibawah ini dan ketika register itu berhasil
+  {
+    "nama_lengkap": "Test tujuh",
+    "email": "test.7@example.com",
+    "phone": "081234567890",
+    "tanggal_lahir": "2005-08-17",
+    "alamat": "Jl. Lenteng Agung No. 10, Jakarta Selatan",
+    "program_studi_id": 1,
+    "jalur_masuk_id": 1
+  }
+  ```
+- **Output ringkas:**
+  1. Pembaruan logika validasi pada `PMBService.approve` di [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py): Mengganti pengecekan `isdigit()` menjadi `isalnum()` dan `len == 3`, sehingga kode prodi alfabetik 3 karakter seperti `'TIF'` (Teknik Informatika) diterima secara sah dan menghasilkan NIM (misal `2026TIF0001`).
+  2. Penyesuaian skenario pengujian di [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) untuk memastikan prodi `'TIF'` berhasil disetujui (HTTP 200 OK), sementara kode prodi non-3 karakter (misal `'12'` atau `'1234'`) tetap ditolak dengan HTTP 400 Bad Request.
+  3. Pembaruan data dan eksekusi approval langsung pada ID 7 di basis data lokal `sevima_mini.db` (NIM `2026TIF0003` terbit dengan status `approved`).
+  4. Pembaruan dokumentasi perbaikan di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md).
+- **Keputusan Arsitektur Utama:**
+  - **Keselarasan Domain Data (Domain Alignment):** Menghilangkan asumsi sempit bahwa "3 digit" harus selalu berupa angka desimal (`0-9`). Pada sistem informasi akademik Indonesia dan skema `ProgramStudi` proyek, kode program studi dirancang sebagai string 3 karakter alfanumerik (misal `'TIF'`, `'SIF'`, `'ARS'`). Mengizinkan `isalnum()` menjaga kompatibilitas total antara alur pendaftaran dan alur penerbitan NIM.
+- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `fix(pmb): support 3-character alphanumeric prodi codes in PMB approval [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Terdapat diskrepansi di mana pendaftaran calon mahasiswa dengan `program_studi_id: 1` (`'TIF'`) berhasil disimpan pada `POST /register`, namun gagal pada `PUT /approve` karena validasi service secara kaku memeriksa `isdigit()`.
+- **Plan:** Mengubah validasi pada `PMBService.approve` dari `isdigit()` menjadi `len(kode_clean) == 3 and kode_clean.isalnum()`, memperbarui pengujian otomatis, dan memvalidasi langsung pada data pengujian pengguna.
+- **Act:** Mengedit `app/services/pmb.py` dan `tests/test_state_machine.py`, memverifikasi seluruh 35 unit test lolos 100%, mengeksekusi approve pada pendaftar ID 7, dan memperbarui dokumentasi log AI.
+- **Reflect:** Konsistensi antarmuka (*interface consistency*) antar-tahapan proses bisnis sangat krusial. Validasi pada tahap lanjutan (seperti approval) tidak boleh menolak data yang telah dinyatakan valid dan lolos pada tahap penerimaan awal (*registration*).
+
+
 

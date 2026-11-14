@@ -215,11 +215,12 @@ class PMBService:
                         detail="Program studi calon mahasiswa tidak ditemukan.",
                     )
 
-                # Validasi kode prodi wajib 3 digit angka
-                if not prodi.kode or len(prodi.kode) != 3 or not prodi.kode.isdigit():
+                # Validasi kode prodi wajib 3 karakter (digit atau huruf alfanumerik)
+                kode_clean = str(prodi.kode).strip() if prodi.kode else ""
+                if len(kode_clean) != 3 or not kode_clean.isalnum():
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"Kode program studi '{prodi.kode}' tidak valid. Kode prodi harus terdiri dari 3 digit angka.",
+                        detail=f"Kode program studi '{prodi.kode}' tidak valid. Kode prodi harus terdiri dari 3 karakter alfanumerik (misal 'TIF', 'SIF', atau '001').",
                     )
 
                 # Catat approved_at (UTC)

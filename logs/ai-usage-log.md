@@ -691,7 +691,7 @@
   4. Pembaruan dokumentasi perbaikan di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md).
 - **Keputusan Arsitektur Utama:**
   - **Keselarasan Domain Data (Domain Alignment):** Menghilangkan asumsi sempit bahwa "3 digit" harus selalu berupa angka desimal (`0-9`). Pada sistem informasi akademik Indonesia dan skema `ProgramStudi` proyek, kode program studi dirancang sebagai string 3 karakter alfanumerik (misal `'TIF'`, `'SIF'`, `'ARS'`). Mengizinkan `isalnum()` menjaga kompatibilitas total antara alur pendaftaran dan alur penerbitan NIM.
-- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `fix(pmb): support 3-character alphanumeric prodi codes in PMB approval [AI-Assisted]`
+- **Commit terkait:** `871cc7a` - `fix(pmb): support 3-character alphanumeric prodi codes in PMB approval [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Terdapat diskrepansi di mana pendaftaran calon mahasiswa dengan `program_studi_id: 1` (`'TIF'`) berhasil disimpan pada `POST /register`, namun gagal pada `PUT /approve` karena validasi service secara kaku memeriksa `isdigit()`.

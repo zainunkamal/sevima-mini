@@ -188,20 +188,32 @@ Sebelum menerbitkan NIM pada alur `approve`, sistem memverifikasi bahwa:
 
 ---
 
+## 📌 Bagian 7: Endpoint Status Pendaftar & Agregasi Statistik PMB (Database-Level)
+
+Pada iterasi ini, ditambahkan dua endpoint penting untuk kebutuhan pelaporan dan pemantauan publik:
+
+### 1. `GET /api/pmb/status/{id}`: Pengecekan Status Publik Protektif
+- Mengembalikan informasi status pendaftaran dan NIM bagi pendaftar dengan respons `HTTP 200 OK`.
+- Mengembalikan `HTTP 404 Not Found` jika pendaftar tidak ditemukan.
+- **Perlindungan Privasi:** Menggunakan skema DTO khusus `PendaftarStatusOut` pada [app/schemas/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/schemas/pmb.py) yang meniadakan seluruh atribut sensitif yang tidak perlu (tanpa `email`, `phone`, `alamat`, dan `tanggal_lahir`).
+
+### 2. `GET /api/pmb/stats`: Agregasi Statistik Database-Level
+- **Prinsip Efisiensi Komputasi:** Seluruh penghitungan agregasi dieksekusi langsung di mesin database menggunakan `GROUP BY` via `func.count(CalonMahasiswa.id)` (tidak mengambil seluruh baris data ke memori Python).
+- **Penanganan Outer Join:**
+  - Menggunakan kueri `select(...).outerjoin(CalonMahasiswa, ...).group_by(...)` pada model `ProgramStudi` dan `JalurMasuk`.
+  - Program studi dan jalur masuk yang belum memiliki pendaftar sama sekali tetap ditampilkan dalam daftar dengan angka **`0`**.
+
+---
+
 ## 🧪 Bukti Pengujian Otomatis
 
 Implementasi telah diuji secara menyeluruh melalui berkas pengujian otomatis:
-1. [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py): 9 skenario pengujian spesifik untuk format NIM 11 digit zero-padded, independensi counter, batas kuota 9999, non-commit flush, dan retry mechanism.
-2. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py): 9 skenario pengujian spesifik untuk transisi state machine PMB:
-   - `test_01_approve_pending_success`: Transisi pending -> approved (200, NIM terbit, approved_at UTC, data pribadi tersaring).
-   - `test_02_approve_idempotent_returns_old_nim_without_calling_generator`: Idempotensi persetujuan ganda tanpa memanggil `generate_nim`.
-   - `test_03_approve_rejected_returns_409`: Pencegahan transisi dari rejected ke approved (409 Conflict).
-   - `test_04_approve_invalid_prodi_kode_returns_400`: Penolakan kode prodi non-3-digit angka ('TIF' dan '12' mengembalikan 400 Bad Request).
-   - `test_05_approve_not_found_returns_404`: ID calon tidak terdaftar mengembalikan 404 Not Found.
-   - `test_06_reject_pending_success`: Transisi pending -> rejected (200, NIM null, data pribadi tersaring).
-   - `test_07_reject_idempotent_returns_200`: Idempotensi penolakan ganda (200 OK).
-   - `test_08_reject_approved_returns_409`: Pencegahan penolakan pendaftar yang sudah approved (409 Conflict).
-   - `test_09_reject_not_found_returns_404`: ID calon tidak terdaftar mengembalikan 404 Not Found.
+1. [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py): 9 skenario pengujian format NIM 11 digit zero-padded, independensi counter, batas kuota 9999, non-commit flush, dan retry mechanism.
+2. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py): 9 skenario pengujian transisi state machine PMB (approve, reject, idempotensi, dan penolakan 409/400/404).
+3. [tests/test_status_and_stats.py](file:///home/zainun/git/istn/sevima-mini/tests/test_status_and_stats.py): 3 skenario pengujian:
+   - `test_01_get_status_success_without_sensitive_data`: Pengecekan status sukses tanpa bocoran data pribadi.
+   - `test_02_get_status_not_found_returns_404`: Penolakan ID tidak terdaftar (404 Not Found).
+   - `test_03_get_stats_aggregation_and_outer_join`: Verifikasi agregasi database-level `GROUP BY` dan pembuktian outer join menampilkan angka 0 untuk prodi dan jalur kosong.
 
-Seluruh suite pengujian proyek (total **35 unit test** pada `test_api_pmb.py`, `test_nim_counter.py`, dan `test_state_machine.py`, serta 7 pengujian pada `test_pmb.py`) **lolos 100% tanpa error**.
+Seluruh suite pengujian proyek (total **38 unit test** pada `test_api_pmb.py`, `test_nim_counter.py`, `test_state_machine.py`, dan `test_status_and_stats.py`, serta 7 pengujian pada `test_pmb.py`) **lolos 100% tanpa error**.
 

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
@@ -310,6 +310,90 @@ class PMBService:
         except Exception:
             db.rollback()
             raise
+
+    @staticmethod
+    def get_status(db: Session, calon_id: int) -> CalonMahasiswa:
+        """
+        Mengambil data status calon mahasiswa:
+        - 404 jika tidak ditemukan.
+        """
+        stmt = select(CalonMahasiswa).where(CalonMahasiswa.id == calon_id)
+        calon = db.scalar(stmt)
+        if not calon:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Calon mahasiswa dengan ID {calon_id} tidak ditemukan.",
+            )
+        return calon
+
+    @staticmethod
+    def get_stats(db: Session) -> dict:
+        """
+        Menghitung ringkasan statistik PMB di level database menggunakan GROUP BY & outer join:
+        1. Jumlah pendaftar per status (GROUP BY)
+        2. Jumlah pendaftar per program studi (outerjoin agar 0 tetap muncul)
+        3. Jumlah pendaftar per jalur masuk (outerjoin agar 0 tetap muncul)
+        """
+        # 1. Jumlah per status (GROUP BY di database)
+        stmt_status = (
+            select(
+                CalonMahasiswa.status,
+                func.count(CalonMahasiswa.id).label("total"),
+            )
+            .group_by(CalonMahasiswa.status)
+        )
+        status_counts = {s.value: 0 for s in StatusPMB}
+        for row in db.execute(stmt_status):
+            st_key = row.status.value if hasattr(row.status, "value") else str(row.status)
+            status_counts[st_key] = row.total
+
+        # 2. Jumlah per program studi (outerjoin agar prodi tanpa pendaftar tetap tampil angka 0)
+        stmt_prodi = (
+            select(
+                ProgramStudi.id,
+                ProgramStudi.kode,
+                ProgramStudi.nama,
+                func.count(CalonMahasiswa.id).label("total"),
+            )
+            .outerjoin(CalonMahasiswa, ProgramStudi.id == CalonMahasiswa.program_studi_id)
+            .group_by(ProgramStudi.id, ProgramStudi.kode, ProgramStudi.nama)
+            .order_by(ProgramStudi.id)
+        )
+        prodi_counts = [
+            {
+                "id": row.id,
+                "kode": row.kode,
+                "nama": row.nama,
+                "total": row.total,
+            }
+            for row in db.execute(stmt_prodi)
+        ]
+
+        # 3. Jumlah per jalur masuk (outerjoin agar jalur tanpa pendaftar tetap tampil angka 0)
+        stmt_jalur = (
+            select(
+                JalurMasuk.id,
+                JalurMasuk.nama,
+                func.count(CalonMahasiswa.id).label("total"),
+            )
+            .outerjoin(CalonMahasiswa, JalurMasuk.id == CalonMahasiswa.jalur_masuk_id)
+            .group_by(JalurMasuk.id, JalurMasuk.nama)
+            .order_by(JalurMasuk.id)
+        )
+        jalur_counts = [
+            {
+                "id": row.id,
+                "nama": row.nama,
+                "total": row.total,
+            }
+            for row in db.execute(stmt_jalur)
+        ]
+
+        return {
+            "per_status": status_counts,
+            "per_program_studi": prodi_counts,
+            "per_jalur_masuk": jalur_counts,
+        }
 
 
 # Alias fungsi untuk kemudahan impor & kompatibilitas modul

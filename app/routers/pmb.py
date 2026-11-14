@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.pmb import PendaftarOut, RegisterRequest
+from app.schemas.pmb import (
+    PMBStatsResponse,
+    PendaftarOut,
+    PendaftarStatusOut,
+    RegisterRequest,
+)
 from app.services.pmb import (
     PMBService,
     approve_calon_mahasiswa,
@@ -110,6 +115,51 @@ def reject(
     Delegasi aturan transisi state ke PMBService (Thin Controller).
     """
     return PMBService.reject(db, calon_id=id)
+
+
+@router.get(
+    "/status/{id}",
+    response_model=PendaftarStatusOut,
+    status_code=status.HTTP_200_OK,
+    summary="Cek Status Pendaftaran Calon Mahasiswa",
+    responses={
+        200: {
+            "description": "Status pendaftaran calon mahasiswa tanpa membocorkan data pribadi",
+        },
+        404: {
+            "description": "Calon mahasiswa tidak ditemukan",
+        },
+    },
+)
+def get_status(
+    id: int,
+    db: Session = Depends(get_db),
+) -> PendaftarStatusOut:
+    """Mengambil status pendaftaran calon mahasiswa (tanpa data pribadi sensitif)."""
+    return PMBService.get_status(db, calon_id=id)
+
+
+@router.get(
+    "/stats",
+    response_model=PMBStatsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Statistik Pendaftar PMB",
+    responses={
+        200: {
+            "description": "Ringkasan statistik jumlah pendaftar per status, per prodi, dan per jalur masuk",
+        },
+    },
+)
+def get_stats(
+    db: Session = Depends(get_db),
+) -> PMBStatsResponse:
+    """
+    Menyajikan agregasi statistik pendaftar PMB:
+    - Jumlah pendaftar per status (GROUP BY di database)
+    - Jumlah pendaftar per program studi (outerjoin agar 0 tetap muncul)
+    - Jumlah pendaftar per jalur masuk (outerjoin agar 0 tetap muncul)
+    """
+    return PMBService.get_stats(db)
 
 
 @router.post(

@@ -102,7 +102,8 @@ sevima-mini/
 │   ├── test_pmb.py               # Pengujian integritas basis data & constraints
 │   ├── test_api_pmb.py           # Pengujian endpoint FastAPI register & DTO
 │   ├── test_nim_counter.py       # Pengujian generator NIM multi-worker, row lock & retry
-│   └── test_state_machine.py     # Pengujian mesin transisi approve/reject & idempotensi
+│   ├── test_state_machine.py     # Pengujian mesin transisi approve/reject & idempotensi
+│   └── test_status_and_stats.py  # Pengujian endpoint status publik & stats agregasi outerjoin
 └── logs/                         # Catatan transparansi penggunaan AI
     └── ai-usage-log.md           # Log interaksi AI dengan kerangka OPAR (Observe-Plan-Act-Reflect)
 ```

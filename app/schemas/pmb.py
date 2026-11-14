@@ -87,3 +87,46 @@ class PendaftarOut(BaseModel):
     # Mengizinkan pemetaan otomatis dari objek SQLAlchemy (Pydantic v2)
     # Atribut tanggal_lahir dan alamat TIDAK disertakan demi perlindungan privasi
     model_config = ConfigDict(from_attributes=True)
+
+
+class PendaftarStatusOut(BaseModel):
+    """
+    Skema output ringkas untuk pengecekan status pendaftaran publik.
+    Tidak membocorkan data pribadi (tanpa email, phone, alamat, tanggal lahir).
+    """
+    id: int
+    nama_lengkap: str
+    program_studi_id: int
+    jalur_masuk_id: Optional[int] = None
+    status: StatusPMB
+    nim: Optional[str] = None
+    created_at: datetime
+    approved_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProdiStats(BaseModel):
+    id: int
+    kode: str
+    nama: str
+    total: int
+
+
+class JalurStats(BaseModel):
+    id: int
+    nama: str
+    total: int
+
+
+class PMBStatsResponse(BaseModel):
+    """
+    Skema ringkasan statistik PMB:
+    - per_status: kamus jumlah per status
+    - per_program_studi: daftar jumlah per program studi (termasuk 0 via outerjoin)
+    - per_jalur_masuk: daftar jumlah per jalur masuk (termasuk 0 via outerjoin)
+    """
+    per_status: dict[str, int]
+    per_program_studi: list[ProdiStats]
+    per_jalur_masuk: list[JalurStats]
+

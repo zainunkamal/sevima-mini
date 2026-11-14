@@ -699,5 +699,42 @@
 - **Act:** Mengedit `app/services/pmb.py` dan `tests/test_state_machine.py`, memverifikasi seluruh 35 unit test lolos 100%, mengeksekusi approve pada pendaftar ID 7, dan memperbarui dokumentasi log AI.
 - **Reflect:** Konsistensi antarmuka (*interface consistency*) antar-tahapan proses bisnis sangat krusial. Validasi pada tahap lanjutan (seperti approval) tidak boleh menolak data yang telah dinyatakan valid dan lolos pada tahap penerimaan awal (*registration*).
 
+---
+
+### Prompt #4 (versi: V4 - Implementasi Endpoint GET Status Pendaftar & Agregasi Statistik PMB Database-Level)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Membangun endpoint `GET /api/pmb/status/{id}` dengan penyaringan data pribadi yang ketat (`PendaftarStatusOut`) dan `GET /api/pmb/stats` yang menghitung agregasi pendaftar per status, per program studi, dan per jalur masuk langsung di level basis data menggunakan SQLAlchemy 2.0 (`select`, `func.count`, `outerjoin`), memastikan program studi dan jalur masuk tanpa pendaftar tetap tampil dengan angka 0.
+- **Prompt:**
+  ```text
+  Buat endpoint:
+  1. GET /api/pmb/status/{id}: 404 jika tidak ada; respons Pydantic khusus
+     output tanpa data pribadi yang tidak perlu.
+  2. GET /api/pmb/stats: jumlah pendaftar per status, per program studi,
+     dan per jalur masuk. Hitung di database dengan GROUP BY (jangan ambil
+     semua baris lalu hitung di Python). Gunakan outer join agar program
+     studi dan jalur masuk tanpa pendaftar tetap tampil dengan angka 0.
+  Gunakan SQLAlchemy 2.0 (select, func.count, outerjoin).
+  ```
+- **Output ringkas:**
+  1. Skema DTO baru pada [app/schemas/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/schemas/pmb.py): `PendaftarStatusOut` (menghilangkan `email`, `phone`, `alamat`, dan `tanggal_lahir`) serta `PMBStatsResponse`, `ProdiStats`, dan `JalurStats`.
+  2. Lapisan service pada [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py):
+     - `PMBService.get_status()`: kueri seleksi berdasarkan ID dengan HTTP 404 jika tidak ditemukan.
+     - `PMBService.get_stats()`: eksekusi agregasi basis data dengan kueri SQLAlchemy 2.0 `select().group_by()` untuk status, serta `select(...).outerjoin(CalonMahasiswa, ...).group_by()` pada `ProgramStudi` dan `JalurMasuk` menggunakan `func.count(CalonMahasiswa.id)` untuk menjamin angka 0 pada relasi kosong.
+  3. Rute controller pada [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py) untuk `GET /api/pmb/status/{id}` dan `GET /api/pmb/stats`.
+  4. Suite pengujian otomatis baru di [tests/test_status_and_stats.py](file:///home/zainun/git/istn/sevima-mini/tests/test_status_and_stats.py) dengan 3 skenario uji komprehensif. Seluruh **38 unit test proyek lolos 100%**.
+  5. Pembaruan dokumentasi di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md) dan [README.md](file:///home/zainun/git/istn/sevima-mini/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Agregasi Murni Mesin Basis Data (Query Efficiency):** Menghindari pembebanan memori aplikasi dengan tidak menarik ribuan baris rekaman ke Python. Penghitungan `func.count()` langsung diolah oleh mesin SQL secara terindeks.
+  2. **Penghitungan Akurat Outer Join:** Menggunakan `func.count(CalonMahasiswa.id)` dan BUKAN `func.count(*)` saat melakukan `outerjoin`. `func.count(*)` akan menghitung baris hasil join bernilai NULL sebagai 1, sedangkan `func.count(column)` secara presisi mengembalikan 0 untuk relasi tanpa record anak.
+  3. **Privacy by Design pada Status Check:** Endpoint status publik tidak mengekspos nomor kontak atau alamat fisik pendaftar, hanya menampilkan nomor pendaftaran, nama, prodi, jalur, status kelulusan, dan NIM.
+- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `feat(pmb): implement status check and stats endpoints with database-level outerjoin aggregation [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Penarikan seluruh data tabel ke memori aplikasi untuk penghitungan analitik menimbulkan penurunan performa drastis (*memory bloating* dan O(N) komputasi aplikasi). Selain itu, pengecekan status publik rawan membocorkan privasi jika menggunakan DTO pendaftaran lengkap.
+- **Plan:** Menyusun query agregasi murni database menggunakan `GROUP BY` dan `outerjoin` dengan `func.count(CalonMahasiswa.id)` agar entitas kosong bernilai 0, merancang DTO output protektif tanpa informasi kontak/alamat, dan mengisolasi logika pada `PMBService`.
+- **Act:** Mengimplementasikan skema DTO, query agregasi di service layer, router tipis, 3 unit test baru (38/38 lolos), dan memperbarui dokumentasi teknis.
+- **Reflect:** Mendelegasikan operasi analitik ke kemampuan relasional basis data (*push computing to data*) adalah praktik terbaik rekayasa perangkat lunak untuk menjaga skalabilitas aplikasi dan kestabilan penggunaan sumber daya server.
+
+
 
 

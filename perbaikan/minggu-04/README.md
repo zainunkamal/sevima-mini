@@ -205,15 +205,46 @@ Pada iterasi ini, ditambahkan dua endpoint penting untuk kebutuhan pelaporan dan
 
 ---
 
+## 📌 Bagian 8: Arsitektur Pengujian Modern Pytest & Fixture Terisolasi
+
+Untuk menjamin kualitas dan keandalan tinggi pada modul PMB, dibangun suite pengujian modern menggunakan framework **`pytest`** dengan pemusatan fixture pada [tests/conftest.py](file:///home/zainun/git/istn/sevima-mini/tests/conftest.py):
+
+### 1. Desain Fixture `conftest.py`
+- **Engine SQLite In-Memory dengan `StaticPool`:**
+  - Menggunakan `create_engine("sqlite:///:memory:", poolclass=StaticPool, connect_args={"check_same_thread": False})`.
+  - `StaticPool` menjamin koneksi in-memory yang sama digunakan secara konsisten oleh seluruh thread dan sesi aplikasi selama siklus pengujian.
+  - Listener event mengaktifkan `PRAGMA foreign_keys = ON;`.
+- **Fixture `db`:**
+  - Menjalankan `Base.metadata.create_all(bind=engine)` di awal, melakukan `yield session`, lalu mengeksekusi `Base.metadata.drop_all(bind=engine)` di akhir sesi uji untuk menjaga isolasi basis data.
+- **Fixture `client`:**
+  - Memasang `app.dependency_overrides[get_db]` dan membersihkannya secara otomatis setelah setiap tes selesai melalui `app.dependency_overrides.clear()`.
+- **Fixture `prodi_ti`:**
+  - Menginisialisasi Program Studi *"Teknik Informatika"* dengan kode **`001`**.
+- **Fixture `jalur_snbp`:**
+  - Menginisialisasi Jalur Masuk default *"SNBP"*.
+
+### 2. Standar Pola Pengujian (Arrange-Act-Assert) & Helper Function
+Pada [tests/test_pmb_pytest.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb_pytest.py), pengujian ditulis dengan disiplin:
+- **Fungsi Pembantu `daftar(...)`:** Memusatkan logika pemanggilan `POST /api/pmb/register` dengan payload default pendaftar dummy (`@example.com`).
+- **Pola Tiga Tahap AAA (Arrange-Act-Assert):** Memisahkan penyiapan kondisi, aksi eksekusi endpoint, dan asersi verifikasi status/data secara tegas.
+
+---
+
 ## 🧪 Bukti Pengujian Otomatis
 
-Implementasi telah diuji secara menyeluruh melalui berkas pengujian otomatis:
-1. [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py): 9 skenario pengujian format NIM 11 digit zero-padded, independensi counter, batas kuota 9999, non-commit flush, dan retry mechanism.
-2. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py): 9 skenario pengujian transisi state machine PMB (approve, reject, idempotensi, dan penolakan 409/400/404).
-3. [tests/test_status_and_stats.py](file:///home/zainun/git/istn/sevima-mini/tests/test_status_and_stats.py): 3 skenario pengujian:
-   - `test_01_get_status_success_without_sensitive_data`: Pengecekan status sukses tanpa bocoran data pribadi.
-   - `test_02_get_status_not_found_returns_404`: Penolakan ID tidak terdaftar (404 Not Found).
-   - `test_03_get_stats_aggregation_and_outer_join`: Verifikasi agregasi database-level `GROUP BY` dan pembuktian outer join menampilkan angka 0 untuk prodi dan jalur kosong.
+Implementasi telah diuji secara menyeluruh melalui kombinasi suite pengujian otomatis:
+1. [tests/test_pmb_pytest.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb_pytest.py) (7 skenario pytest):
+   - `test_register_sukses`: Registrasi berhasil HTTP 201 Created (privasi tersaring).
+   - `test_register_email_ganda`: Penolakan email duplikat HTTP 409 Conflict.
+   - `test_approve_generate_nim`: Penerbitan NIM sesuai regex 11 digit sekuensial (`^\d{4}001\d{4}$`).
+   - `test_approve_idempotent`: Idempotensi persetujuan ganda, NIM tetap, dan pendaftar berikutnya mendapatkan nomor urut **2 BUKAN 3**.
+   - `test_register_format_hp_salah`: Penolakan nomor HP tidak valid dengan HTTP 400 Bad Request (sesuai Opsi A / ADR-003).
+   - `test_approve_id_tidak_ada`: Penolakan approval ID fiktif HTTP 404 Not Found.
+   - `test_approve_pendaftar_rejected`: Penolakan approval terhadap calon berstatus rejected HTTP 409 Conflict.
+2. [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py) (9 skenario): Format NIM 11 digit zero-padded, independensi counter, batas kuota 9999, non-commit flush, dan retry mechanism.
+3. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) (9 skenario): Transisi state machine PMB (approve, reject, idempotensi, dan penolakan 409/400/404).
+4. [tests/test_status_and_stats.py](file:///home/zainun/git/istn/sevima-mini/tests/test_status_and_stats.py) (3 skenario): Pengecekan status publik dan agregasi database-level `GROUP BY` dengan outer join.
+5. [tests/test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py) (10 skenario) & [tests/test_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb.py) (7 skenario).
 
-Seluruh suite pengujian proyek (total **38 unit test** pada `test_api_pmb.py`, `test_nim_counter.py`, `test_state_machine.py`, dan `test_status_and_stats.py`, serta 7 pengujian pada `test_pmb.py`) **lolos 100% tanpa error**.
+Seluruh suite pengujian proyek (total **45 test pada runner Pytest** dan **38 test pada runner Unittest**) **lolos 100% tanpa error**.
 

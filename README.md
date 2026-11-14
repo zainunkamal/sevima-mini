@@ -98,12 +98,15 @@ sevima-mini/
 │   ├── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
 │   ├── ADR-002.pdf               # ADR: Modularitas Domain Service Layer
 │   └── ADR-003.pdf               # ADR: Standardisasi Validasi Klien (HTTP 400 vs 422) & Integritas Relasional PMB
-├── tests/                        # Suite pengujian otomatis (unittest)
+├── tests/                        # Suite pengujian otomatis (unittest & pytest)
+│   ├── conftest.py               # Fixture pytest terpusat (StaticPool, db, client, prodi_ti)
+│   ├── test_pmb_pytest.py        # Pengujian modul PMB berbasis pytest (AAA pattern & idempotensi)
 │   ├── test_pmb.py               # Pengujian integritas basis data & constraints
 │   ├── test_api_pmb.py           # Pengujian endpoint FastAPI register & DTO
 │   ├── test_nim_counter.py       # Pengujian generator NIM multi-worker, row lock & retry
 │   ├── test_state_machine.py     # Pengujian mesin transisi approve/reject & idempotensi
 │   └── test_status_and_stats.py  # Pengujian endpoint status publik & stats agregasi outerjoin
+├── pytest.ini                    # Konfigurasi runner pytest
 └── logs/                         # Catatan transparansi penggunaan AI
     └── ai-usage-log.md           # Log interaksi AI dengan kerangka OPAR (Observe-Plan-Act-Reflect)
 ```

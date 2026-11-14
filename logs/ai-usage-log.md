@@ -735,6 +735,58 @@
 - **Act:** Mengimplementasikan skema DTO, query agregasi di service layer, router tipis, 3 unit test baru (38/38 lolos), dan memperbarui dokumentasi teknis.
 - **Reflect:** Mendelegasikan operasi analitik ke kemampuan relasional basis data (*push computing to data*) adalah praktik terbaik rekayasa perangkat lunak untuk menjaga skalabilitas aplikasi dan kestabilan penggunaan sumber daya server.
 
+---
+
+### Prompt #5 (versi: V5 - Suite Pengujian Modern Pytest dengan Fixtures In-Memory StaticPool & Pola AAA)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Menyusun suite pengujian otomatis modern menggunakan framework `pytest` dengan pemusatan fixture pada `conftest.py` berbasis SQLite in-memory (`StaticPool`, `check_same_thread=False`), fixture `db` (`create_all` & `drop_all`), fixture `client` dengan penanganan `dependency_overrides` terisolasi, dan fixture `prodi_ti` (kode 001). Menerapkan pola pengujian Arrange-Act-Assert (AAA), fungsi pembantu `daftar(email, ...)`, data dummy `@example.com`, serta pengujian ketat registrasi 201, email ganda 409, regex NIM 11 digit sekuensial, idempotensi counter approval (nomor urut tidak meloncat), validasi format nomor HP 400 (ADR-003), 404 not found, dan 409 rejected.
+- **Prompt:**
+  ```text
+  Buat tes pytest untuk modul PMB dengan fixture di conftest.py:
+  - Engine SQLite in-memory (StaticPool, check_same_thread=False),
+    fixture db (create_all / drop_all dengan yield), fixture client
+    dengan dependency_overrides untuk get_db (dibersihkan setelah tes),
+    dan fixture prodi_ti (Teknik Informatika, kode 001).
+  - Tes: register sukses (201), email ganda (409), approve generate NIM
+    (format regex 11 digit dan berurutan), approve idempotent (dua kali,
+    NIM sama, pendaftar berikutnya nomor 2 bukan 3), format HP salah
+    ([400 atau 422 sesuai keputusan saya]), approve ID tidak ada (404),
+    approve pendaftar rejected (409).
+  - Gunakan pola Arrange-Act-Assert, fungsi pembantu daftar(email), dan data
+    dummy (email @example.com).
+  ```
+- **Output ringkas:**
+  1. Berkas konfigurasi fixture terpusat [tests/conftest.py](file:///home/zainun/git/istn/sevima-mini/tests/conftest.py):
+     - Engine SQLite `:memory:` dengan `StaticPool` dan `connect_args={"check_same_thread": False}`.
+     - Event listener `PRAGMA foreign_keys = ON;`.
+     - Fixture `db`: siklus `create_all` $\rightarrow$ `yield session` $\rightarrow$ `drop_all`.
+     - Fixture `client`: membungkus `TestClient(app)` dengan pembersihan otomatis `app.dependency_overrides.clear()`.
+     - Fixture `prodi_ti`: entitas Program Studi Teknik Informatika dengan kode `'001'`.
+     - Fixture `jalur_snbp`: entitas jalur masuk default SNBP.
+  2. Berkas pengujian [tests/test_pmb_pytest.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb_pytest.py) dengan fungsi pembantu `daftar()` dan 7 fungsi uji berbasis pola AAA:
+     - `test_register_sukses` (201)
+     - `test_register_email_ganda` (409)
+     - `test_approve_generate_nim` (200, regex 11 digit `^\d{4}001\d{4}$`, urut 0001)
+     - `test_approve_idempotent` (approve 2x tetap 0001, pendaftar berikutnya bernomor urut 2 bukan 3)
+     - `test_register_format_hp_salah` (400 Bad Request sesuai keputusan arsitektur Opsi A / ADR-003)
+     - `test_approve_id_tidak_ada` (404 Not Found)
+     - `test_approve_pendaftar_rejected` (409 Conflict)
+  3. Konfigurasi [pytest.ini](file:///home/zainun/git/istn/sevima-mini/pytest.ini) dengan `pythonpath = .` dan `testpaths = tests`.
+  4. Seluruh pengujian lolos 100% (**45/45 tests passed** pada runner pytest).
+  5. Pembaruan dokumentasi di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md) dan [README.md](file:///home/zainun/git/istn/sevima-mini/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Koneksi Persisten Bersama via `StaticPool`:** Pada database in-memory SQLite (`:memory:`), setiap koneksi baru secara default akan membuka instance memori kosong yang berbeda. Penggunaan `StaticPool` mengunci single connection yang persisten dan aman multi-thread/session, sehingga data yang diisi oleh satu fixture dapat dibaca secara andal oleh dependensi lain dalam satu siklus pengujian.
+  2. **Isolasi Mutlak per Test:** Kombinasi `create_all`/`drop_all` per test pada fixture `db` dan `dependency_overrides.clear()` pada fixture `client` mencegah *state leak* atau efek samping (*side effects*) antar-tes.
+  3. **Verifikasi Non-Leaking Counter pada Idempotensi:** Pengujian secara eksplisit menguji pendaftar kedua setelah pendaftar pertama diapprove dua kali, membuktikan bahwa generator NIM tidak membuang nomor urut database.
+- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `test(pmb): implement pytest test suite with StaticPool in-memory fixtures and AAA pattern [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Pengujian unit berbasis `unittest.TestCase` konvensional memerlukan banyak boilerplate setup/teardown manual dan rawan benturan koneksi saat berhadapan dengan dependency injection FastAPI dan database in-memory.
+- **Plan:** Membangun konfigurasi Pytest yang modular dengan fixture dependency injection di `conftest.py`, memanfaatkan `StaticPool` untuk stabilitas in-memory SQLite, menyusun fungsi pembantu pendaftaran, dan menerapkan pola AAA secara konsisten.
+- **Act:** Mengimplementasikan `tests/conftest.py`, `tests/test_pmb_pytest.py`, `pytest.ini`, memverifikasi seluruh 45 pengujian lolos dalam 2.5 detik, serta memperbarui dokumentasi proyek dan log AI.
+- **Reflect:** Pengujian otomatis yang baik tidak hanya memvalidasi fungsionalitas dasar, tetapi harus mampu membuktikan integritas non-fungsional (seperti invariansi counter konkurensi pada operasi idempotent) dengan kode tes yang bersih, deklaratif, dan mudah dipelihara.
+
+
 
 
 

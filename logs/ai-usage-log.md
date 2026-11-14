@@ -456,7 +456,7 @@
 - **Keputusan Arsitektur Utama:**
   - Swagger UI terintegrasi langsung melalui OpenAPI spec bawaan FastAPI (`/openapi.json`), mendokumentasikan skema input `RegisterRequest` dan skema output `PendaftarOut` secara otomatis dari model Pydantic.
   - Skrip *seeder* mandiri memastikan lingkungan lokal siap pakai tanpa perlu input data SQL manual.
-- **Commit terkait:** `pending` - `feat(docs): add seed script, Swagger UI testing guide, and update AI usage log [AI-Assisted]`
+- **Commit terkait:** `31d7f7f` - `feat(docs): add seed script, Swagger UI testing guide, and update AI usage log [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Pengujian endpoint yang memiliki ketergantungan relasi *foreign key* (seperti `program_studi_id` dan `jalur_masuk_id`) membutuhkan data referensi valid pada basis data agar tidak menghasilkan error validasi bisnis saat diuji melalui UI Swagger.

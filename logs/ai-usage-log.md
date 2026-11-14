@@ -384,7 +384,7 @@
   1. **Aktivasi Pragma Foreign Keys SQLite:** SQLite menonaktifkan FK secara *default*. Penegakan dilakukan pada dua titik kritis: *runtime application connection* (`app/database.py`) dan *migration connection runner* (`alembic/env.py` & skrip migrasi).
   2. **Penyimpanan Nomor Telepon:** Nomor HP disimpan sebagai `VARCHAR(20)` (String, bukan Integer) untuk mempertahankan digit nol di awal (*leading zero*) dan kode negara (`+62`). Pembatasan panjang diterapkan di database, sedangkan validasi pola format diserahkan ke *application layer* (Pydantic / service layer) karena SQLite standar tidak memiliki mesin regex *native*.
   3. **Urutan Downgrade Konsisten:** Skrip migrasi `downgrade()` menghapus tabel `calon_mahasiswa` terlebih dahulu sebelum menghapus `jalur_masuk` dan `program_studi` guna mencegah pelanggaran integritas referensial.
-- **Commit terkait:** `pending` - `feat(pmb): implement SQLAlchemy 2 models and Alembic migration for PMB module [AI-Assisted]`
+- **Commit terkait:** `e990cec` - `feat(pmb): implement SQLAlchemy 2 models and Alembic migration for PMB module [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** SQLite memiliki karakteristik khusus di mana penegakan *foreign key* harus diaktifkan secara eksplisit per koneksi dan ketiadaan fungsi bawaan regex untuk validasi format teks kompleks.

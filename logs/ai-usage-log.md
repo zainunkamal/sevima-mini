@@ -463,3 +463,30 @@
 - **Plan:** Menyediakan skrip *seeder* idempotens yang mengisi data awal Program Studi dan Jalur Masuk jika belum tersedia, serta menyusun panduan langkah demi langkah menjalankan Uvicorn dan menguji skenario positif/negatif pada Swagger UI.
 - **Act:** Mengimplementasikan berkas `app/seed.py`, mengeksekusi seeding ke database `sevima_mini.db`, memverifikasi endpoint `/docs` menghasilkan respons HTTP 200, dan mencatat dokumentasi ke dalam log AI.
 - **Reflect:** Menyertakan instrumen data awal (*seed data*) dan dokumentasi Swagger yang interaktif sangat menyederhanakan siklus pengujian (*Developer Experience*) bagi pengembang maupun tim penguji QA.
+
+---
+
+### Prompt #4 (versi: V4 - Penguatan Keamanan, Eliminasi Error Masking, & Refactoring Murni SQLAlchemy 2.0)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Mengimplementasikan perbaikan kritis berdasarkan hasil audit arsitektur: mengeliminasi *blind exception handling* pada `IntegrityError`, mengadopsi sintaks murni SQLAlchemy 2.0 (`select`/`scalar`), memperketat regex nomor ponsel Indonesia, menambahkan validasi batas usia calon mahasiswa, serta memperbarui suite pengujian otomatis.
+- **Prompt:**
+  ```text
+  sekarang saya mau kamu impementasikan kemudian saya mau kamu save ke AI-Usage-log dan dengan commit AI-Assited, terus saya mau kamu kasih tau cara untuk testingnya (ini hanya sebatas cari tau saja tanpa edit kode)
+  ```
+- **Output ringkas:**
+  1. Pembaruan [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py): Bermigrasi dari `db.query()` ke `db.scalar(select(...))` murni SQLAlchemy 2.0, serta mendiferensiasi pesan `IntegrityError` berdasarkan `exc.orig` (membedakan pelanggaran unique email, foreign key, atau check constraint).
+  2. Pembaruan [app/schemas/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/schemas/pmb.py): Mengetatkan pola regex nomor HP seluler Indonesia `^(?:\+628|628|08)[1-9][0-9]{6,11}$`, menambahkan `@field_validator` usia `tanggal_lahir` (14–80 tahun), dan mengikat tipe respons `status` ke `StatusPMB`.
+  3. Pembersihan prefix Pydantic pada pesan humanis di [app/main.py](file:///home/zainun/git/istn/sevima-mini/app/main.py).
+  4. Penambahan skenario uji pada [tests/test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py) untuk tanggal lahir masa depan dan validasi nomor HP non-seluler (14 unit test lolos 100%).
+  5. Pembaruan dokumentasi perbaikan di [perbaikan/minggu-03/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-03/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Eliminasi Error Masking:** Menghilangkan asumsi salah bahwa setiap `IntegrityError` pasti berasal dari email ganda. Pengecekan spesifik pada string origin driver basis data memastikan pelanggaran foreign key atau check constraint tetap dikembalikan dengan kode dan konteks yang tepat.
+  2. **Konsistensi Modern Python Stack:** Seluruh query di service layer kini patuh pada standar SQLAlchemy 2.0 (`select` statement).
+  3. **Penyempurnaan Validasi Domain:** Mencegah anomali tanggal lahir di masa depan atau usia di luar rentang perkuliahan wajar secara deklaratif di lapisan Pydantic DTO.
+- **Commit terkait:** `pending` - `feat(api): implement security hardening and SQLAlchemy 2 query refactoring [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Audit teknis mengungkap celah di mana *catch-all IntegrityError* menyamarkan kegagalan constraint lain sebagai error email duplikat, dan query masih memakai gaya hybrid SQLAlchemy 1.x.
+- **Plan:** Mengonversi seluruh query menjadi `db.scalar(select())`, menginspeksi error origin database untuk diferensiasi status code, memperketat regex seluler Indonesia, serta menambahkan validasi batas usia calon mahasiswa baru.
+- **Act:** Mengedit berkas schema, service, exception handler, menambahkan test cases baru, mengeksekusi suite unit test (14/14 lolos), memperbarui dokumentasi perbaikan, dan mencatat riwayat ke log transparansi AI.
+- **Reflect:** Kode yang baik tidak hanya berhasil menjalankan *happy path*, tetapi harus mampu menangani *edge cases* integritas dan menyajikan *error reporting* yang akurat tanpa membocorkan kelemahan sistem internal.

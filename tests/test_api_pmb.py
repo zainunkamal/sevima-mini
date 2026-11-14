@@ -99,6 +99,33 @@ class TestPMBRegisterAPI(unittest.TestCase):
         self.assertIn("Data pendaftaran yang dikirimkan tidak valid", data["detail"])
         self.assertTrue(len(data["errors"]) >= 3)
 
+    def test_06_future_birthdate_rejected(self):
+        """Memastikan tanggal lahir di masa depan ditolak dengan HTTP 400."""
+        payload = {
+            "nama_lengkap": "Calon Masa Depan",
+            "email": "future@example.com",
+            "phone": "081234567890",
+            "tanggal_lahir": "2099-01-01",
+            "program_studi_id": 1,
+            "jalur_masuk_id": 1,
+        }
+        response = self.client.post("/api/pmb/register", json=payload)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Tanggal lahir tidak boleh di masa depan", str(response.json()["errors"]))
+
+    def test_07_invalid_indonesia_phone_prefix_rejected(self):
+        """Memastikan nomor HP dengan awalan non-seluler Indonesia (misal 621...) ditolak dengan HTTP 400."""
+        payload = {
+            "nama_lengkap": "Calon Telepon Salah",
+            "email": "phone_fail@example.com",
+            "phone": "62123456789",  # awalan 62 tapi bukan 628
+            "program_studi_id": 1,
+            "jalur_masuk_id": 1,
+        }
+        response = self.client.post("/api/pmb/register", json=payload)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Format nomor HP tidak valid", str(response.json()["errors"]))
+
 
 if __name__ == "__main__":
     unittest.main()

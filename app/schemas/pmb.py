@@ -1,7 +1,9 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.models.pmb import StatusPMB
 
 
 class RegisterRequest(BaseModel):
@@ -16,15 +18,16 @@ class RegisterRequest(BaseModel):
         description="Alamat email aktif calon mahasiswa",
         examples=["ahmad.fauzi@example.com"],
     )
+    # Regex nomor HP Indonesia presisi: diawali 08, 628, atau +628 diikuti digit 1-9 dan 7-11 digit berikutnya
     phone: str = Field(
         ...,
-        pattern=r"^(\+62|62|08)[0-9]{7,13}$",
-        description="Nomor HP Indonesia dengan awalan 08, 62, atau +62",
+        pattern=r"^(?:\+628|628|08)[1-9][0-9]{6,11}$",
+        description="Nomor HP Indonesia valid (awalan 08, 628, atau +628)",
         examples=["081234567890"],
     )
     tanggal_lahir: Optional[date] = Field(
         default=None,
-        description="Tanggal lahir calon mahasiswa",
+        description="Tanggal lahir calon mahasiswa (rentang umur 14 - 80 tahun)",
         examples=["2005-08-17"],
     )
     alamat: Optional[str] = Field(
@@ -45,6 +48,20 @@ class RegisterRequest(BaseModel):
         examples=[1],
     )
 
+    @field_validator("tanggal_lahir")
+    @classmethod
+    def validate_umur_calon_mahasiswa(cls, v: Optional[date]) -> Optional[date]:
+        if v is not None:
+            today = date.today()
+            if v >= today:
+                raise ValueError("Tanggal lahir tidak boleh di masa depan")
+            umur = today.year - v.year - ((today.month, today.day) < (v.month, v.day))
+            if umur < 14:
+                raise ValueError("Usia calon mahasiswa minimal 14 tahun")
+            if umur > 80:
+                raise ValueError("Usia calon mahasiswa melebihi batas wajar (maksimal 80 tahun)")
+        return v
+
 
 class PendaftarOut(BaseModel):
     id: int
@@ -53,7 +70,7 @@ class PendaftarOut(BaseModel):
     phone: str
     program_studi_id: int
     jalur_masuk_id: Optional[int] = None
-    status: str
+    status: StatusPMB
     nim: Optional[str] = None
     created_at: datetime
     approved_at: Optional[datetime] = None

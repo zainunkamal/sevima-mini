@@ -24,13 +24,17 @@ async def validation_exception_handler(
         field_name = " -> ".join(field_loc) if field_loc else "input"
         msg = err.get("msg", "Format data tidak valid")
 
+        # Bersihkan prefix bawaan Pydantic v2
+        if msg.startswith("Value error, "):
+            msg = msg.replace("Value error, ", "")
+
         # Transformasi pesan agar lebih ramah bagi pengguna
         if "string_too_short" in err.get("type", ""):
             msg = f"Panjang minimal adalah {err.get('ctx', {}).get('min_length', 3)} karakter"
         elif "value_error" in err.get("type", "") and "email" in field_name:
             msg = "Format alamat email tidak valid"
         elif "string_pattern_mismatch" in err.get("type", ""):
-            msg = "Format nomor HP tidak valid (harus nomor Indonesia dengan awalan 08, 62, atau +62)"
+            msg = "Format nomor HP tidak valid (harus nomor Indonesia dengan awalan 08, 628, atau +628)"
         elif "greater_than" in err.get("type", ""):
             msg = "Nilai harus lebih besar dari 0"
 

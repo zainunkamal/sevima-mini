@@ -89,13 +89,25 @@ Endpoint pendaftaran calon mahasiswa baru dibangun menggunakan **FastAPI** denga
 | **Jalur Masuk Tidak Ada** | `400 Bad Request` | `"Jalur masuk dengan ID <id> tidak ditemukan."` |
 | **Nama < 3 Karakter** | `400 Bad Request` | `"nama_lengkap: Panjang minimal adalah 3 karakter"` |
 | **Format Email Tidak Valid** | `400 Bad Request` | `"email: Format alamat email tidak valid"` |
-| **Format No. HP Ilegal** | `400 Bad Request` | `"phone: Format nomor HP tidak valid (harus nomor Indonesia dengan awalan 08, 62, atau +62)"` |
+| **Format No. HP Ilegal** | `400 Bad Request` | `"phone: Format nomor HP tidak valid (harus nomor Indonesia dengan awalan 08, 628, atau +628)"` |
 | **ID Prodi / Jalur <= 0** | `400 Bad Request` | `"program_studi_id: Nilai harus lebih besar dari 0"` |
+| **Tanggal Lahir Masa Depan / Usia < 14 thn** | `400 Bad Request` | `"tanggal_lahir: Tanggal lahir tidak boleh di masa depan"` / `"Usia calon mahasiswa minimal 14 tahun"` |
+
+---
+
+## 📌 Bagian 3: Refactoring Keamanan & Peningkatan Arsitektur
+
+Berdasarkan audit teknis backend, dilakukan 5 perbaikan kritis:
+1. **Penanganan Spesifik `IntegrityError`:** Mengeliminasi *blind exception handling* dengan memeriksa pesan error asli (`exc.orig`). Hanya kegagalan `UNIQUE constraint ... email` yang mengembalikan HTTP 409, sedangkan pelanggaran constraint lain dikembalikan sebagai HTTP 400 tanpa disamarkan.
+2. **Adopsi Penuh SQLAlchemy 2.0:** Memperbarui pemanggilan query pada lapisan service dari `db.query().filter().first()` (gaya 1.x) menjadi `db.scalar(select(...).where(...))` (murni 2.0).
+3. **Pengetatan Regex Nomor HP Indonesia:** Mengubah pola regex menjadi `^(?:\+628|628|08)[1-9][0-9]{6,11}$` guna memastikan digit pertama setelah kode negara/awalan adalah angka `8` (khusus nomor seluler Indonesia).
+4. **Validasi Batas Usia Bisnis pada Tanggal Lahir:** Menambahkan `@field_validator("tanggal_lahir")` pada Pydantic untuk menolak tanggal lahir di masa depan serta membatasi usia wajar calon mahasiswa (14 hingga 80 tahun).
+5. **Ketatnya Tipe State Respons:** Mengikat atribut `status` pada `PendaftarOut` langsung ke tipe domain `StatusPMB` Enum.
 
 ---
 
 ## 🧪 Bukti Pengujian Otomatis
 
-Seluruh fungsionalitas telah divalidasi melalui 2 berkas pengujian otomatis:
+Seluruh fungsionalitas telah divalidasi melalui 2 berkas pengujian otomatis (total 14 unit test lolos 100%):
 1. [test_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb.py): Menguji 7 skenario integritas skema basis data SQLite dan constraint.
-2. [test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py): Menguji 5 skenario endpoint FastAPI menggunakan `TestClient` (HTTP 201, 409, 400 referensi, dan 400 format validasi).
+2. [test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py): Menguji 7 skenario endpoint FastAPI menggunakan `TestClient` (HTTP 201, 409, 400 referensi, 400 format validasi, 400 tanggal lahir masa depan, dan 400 regex HP ketat).

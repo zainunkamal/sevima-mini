@@ -50,8 +50,8 @@ sevima-mini/
 │   ├── class-diagram.md          # Spesifikasi rinci atribut, method, relasi, dan aturan bisnis
 │   ├── use-case-diagram.puml     # Kode sumber PlantUML Use Case Diagram (Versi 1)
 │   ├── use-case-diagram.md       # Spesifikasi formal use case, aktor, dan relasi include/extend
-│   ├── sequence-diagram.mmd      # Kode sumber Mermaid Sequence Diagram Validasi KRS (Versi 1)
-│   ├── sequence-diagram.md       # Spesifikasi alur validasi komprehensif & error accumulator
+│   ├── krs-sequence-diagram.mmd  # Kode sumber Mermaid Sequence Diagram Validasi KRS (Versi 1)
+│   ├── krs-sequence-diagram.md   # Spesifikasi alur validasi komprehensif & error accumulator
 │   ├── pmb-sequence-diagram.mmd  # Kode sumber Mermaid Sequence Diagram PMB (Versi 1)
 │   └── pmb-sequence-diagram.md   # Spesifikasi alur PMB, factory pattern, & resilient notification
 ├── perbaikan/                    # Riwayat perbaikan dan bukti visual evolusi diagram

@@ -12,7 +12,7 @@ Diagram sequence UML berbasis Mermaid untuk alur proses **Validasi Kartu Rencana
 
 ## 🛠️ Kode Sumber Mermaid
 
-Kode sumber tersimpan di [sequence-diagram.mmd](sequence-diagram.mmd):
+Kode sumber tersimpan di [krs-sequence-diagram.mmd](krs-sequence-diagram.mmd):
 
 ```mermaid
 sequenceDiagram

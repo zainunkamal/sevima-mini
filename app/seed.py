@@ -13,12 +13,16 @@ from app.models.pmb import JalurMasuk, ProgramStudi
 def seed_data():
     db = SessionLocal()
     try:
-        # 1. Seed Program Studi
+        # 1. Seed Program Studi (3 digit angka untuk generator NIM & kode huruf untuk uji validasi 400)
         prodi_list = [
-            {"kode": "TIF", "nama": "Teknik Informatika", "fakultas": "Fakultas Teknik Industri"},
-            {"kode": "SIF", "nama": "Sistem Informasi", "fakultas": "Fakultas Teknik Industri"},
-            {"kode": "ARS", "nama": "Arsitektur", "fakultas": "Fakultas Teknik Sipil & Perencanaan"},
-            {"kode": "TEK", "nama": "Teknik Elektro", "fakultas": "Fakultas Teknik Industri"},
+            {"kode": "001", "nama": "Teknik Informatika", "fakultas": "Fakultas Teknik Industri"},
+            {"kode": "002", "nama": "Sistem Informasi", "fakultas": "Fakultas Teknik Industri"},
+            {"kode": "003", "nama": "Arsitektur", "fakultas": "Fakultas Teknik Sipil & Perencanaan"},
+            {"kode": "004", "nama": "Teknik Elektro", "fakultas": "Fakultas Teknik Industri"},
+            {"kode": "TIF", "nama": "Teknik Informatika (Kode Huruf)", "fakultas": "Fakultas Teknik Industri"},
+            {"kode": "SIF", "nama": "Sistem Informasi (Kode Huruf)", "fakultas": "Fakultas Teknik Industri"},
+            {"kode": "ARS", "nama": "Arsitektur (Kode Huruf)", "fakultas": "Fakultas Teknik Sipil & Perencanaan"},
+            {"kode": "TEK", "nama": "Teknik Elektro (Kode Huruf)", "fakultas": "Fakultas Teknik Industri"},
         ]
         for p in prodi_list:
             if not db.query(ProgramStudi).filter_by(kode=p["kode"]).first():

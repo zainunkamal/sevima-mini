@@ -727,7 +727,7 @@
   1. **Agregasi Murni Mesin Basis Data (Query Efficiency):** Menghindari pembebanan memori aplikasi dengan tidak menarik ribuan baris rekaman ke Python. Penghitungan `func.count()` langsung diolah oleh mesin SQL secara terindeks.
   2. **Penghitungan Akurat Outer Join:** Menggunakan `func.count(CalonMahasiswa.id)` dan BUKAN `func.count(*)` saat melakukan `outerjoin`. `func.count(*)` akan menghitung baris hasil join bernilai NULL sebagai 1, sedangkan `func.count(column)` secara presisi mengembalikan 0 untuk relasi tanpa record anak.
   3. **Privacy by Design pada Status Check:** Endpoint status publik tidak mengekspos nomor kontak atau alamat fisik pendaftar, hanya menampilkan nomor pendaftaran, nama, prodi, jalur, status kelulusan, dan NIM.
-- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `feat(pmb): implement status check and stats endpoints with database-level outerjoin aggregation [AI-Assisted]`
+- **Commit terkait:** `d0b6841` - `feat(pmb): implement status check and stats endpoints with database-level outerjoin aggregation [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Penarikan seluruh data tabel ke memori aplikasi untuk penghitungan analitik menimbulkan penurunan performa drastis (*memory bloating* dan O(N) komputasi aplikasi). Selain itu, pengecekan status publik rawan membocorkan privasi jika menggunakan DTO pendaftaran lengkap.

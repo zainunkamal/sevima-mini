@@ -778,7 +778,7 @@
   1. **Koneksi Persisten Bersama via `StaticPool`:** Pada database in-memory SQLite (`:memory:`), setiap koneksi baru secara default akan membuka instance memori kosong yang berbeda. Penggunaan `StaticPool` mengunci single connection yang persisten dan aman multi-thread/session, sehingga data yang diisi oleh satu fixture dapat dibaca secara andal oleh dependensi lain dalam satu siklus pengujian.
   2. **Isolasi Mutlak per Test:** Kombinasi `create_all`/`drop_all` per test pada fixture `db` dan `dependency_overrides.clear()` pada fixture `client` mencegah *state leak* atau efek samping (*side effects*) antar-tes.
   3. **Verifikasi Non-Leaking Counter pada Idempotensi:** Pengujian secara eksplisit menguji pendaftar kedua setelah pendaftar pertama diapprove dua kali, membuktikan bahwa generator NIM tidak membuang nomor urut database.
-- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `test(pmb): implement pytest test suite with StaticPool in-memory fixtures and AAA pattern [AI-Assisted]`
+- **Commit terkait:** `4e1a741` - `test(pmb): implement pytest test suite with StaticPool in-memory fixtures and AAA pattern [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Pengujian unit berbasis `unittest.TestCase` konvensional memerlukan banyak boilerplate setup/teardown manual dan rawan benturan koneksi saat berhadapan dengan dependency injection FastAPI dan database in-memory.

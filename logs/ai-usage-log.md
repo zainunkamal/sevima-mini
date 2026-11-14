@@ -881,6 +881,39 @@
 - **Act:** Mengimplementasikan 22 tes baru di `tests/test_coverage_edge_cases.py`, memperketat asersi di `test_nim_counter.py`, `test_state_machine.py`, dan `test_pmb_pytest.py`, menjalankan analisis coverage (mencapai 99%), dan mendokumentasikan hasilnya.
 - **Reflect:** Angka coverage tinggi semata tidak menjamin kualitas tanpa asersi yang kuat. Mengombinasikan cakupan cabang yang tinggi (99%) dengan asersi yang presisi (*asserting state, behavior, and side-effects*) adalah standar emas pengujian perangkat lunak profesional untuk menjamin stabilitas sistem di lingkungan produksi.
 
+---
+
+### Prompt #8 (versi: V8 - Dokumentasi OpenAPI Komprehensif pada Router PMB)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Menambahkan dokumentasi OpenAPI standar enterprise pada router PMB: pengelompokan endpoint via `tags`, penulisan `summary` dan narasi Markdown `description` tiap endpoint, serta pendokumentasian status kode error HTTP 400, 404, dan 409 pada parameter `responses` lengkap dengan skenario contoh pesan error JSON riil, tanpa mengubah logika implementasi endpoint.
+- **Prompt:**
+  ```text
+  Tambahkan dokumentasi OpenAPI pada router PMB: tags agar endpoint
+  terkelompok, summary dan description tiap endpoint, serta parameter
+  responses untuk mendokumentasikan 400, 404, dan 409 dengan contoh
+  isi pesan error. Jangan mengubah logika endpoint.
+
+  [Dilanjutkan instruksi pengguna:]
+  sekarang kamu commit dan save ai-usage-log
+  ```
+- **Output ringkas:**
+  1. Pembaruan controller router pada [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py):
+     - Penyematan tag deklaratif `tags=["Penerimaan Mahasiswa Baru (PMB)"]` pada router untuk mengelompokkan seluruh operasi PMB di Swagger UI dan ReDoc.
+     - Penambahan `summary` dan `description` mendalam berbasis Markdown untuk 5 rute PMB: `POST /register`, `PUT /approve/{id}`, `PUT /reject/{id}`, `GET /status/{id}`, dan `GET /stats`.
+     - Dokumentasi lengkap parameter `responses` mencakup respons sukses (201/200) serta status kegagalan HTTP 400 (validation error, foreign key error, invalid prodi code, kuota 9999 penuh), HTTP 404 (calon mahasiswa tidak ditemukan), dan HTTP 409 (email duplikat, transisi terminal rejected/approved, dan benturan integritas data) beserta contoh payload JSON konkret.
+     - Logika internal seluruh endpoint tetap dipertahankan murni (*thin controller* mendelegasikan ke `PMBService`).
+  2. Pembaruan dokumentasi teknis di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md) (*Bagian 11: Standarisasi Dokumentasi OpenAPI & Integrasi Swagger UI*).
+  3. Verifikasi pengujian otomatis: Seluruh **68 tes pytest** dan **39 tes unittest** tetap lolos 100% dengan **coverage 99%**.
+- **Keputusan Arsitektur Utama:**
+  - **Self-Documenting API & Developer Experience (DX):** Dokumentasi yang kaya langsung di level router memberikan kejelasan kontrak API bagi frontend developer, QA engineer, dan sistem pihak ketiga tanpa perlu membuka kode sumber service. Menyediakan contoh JSON riil untuk seluruh variasi error (400, 404, 409) mempercepat integrasi dan proses penanganan error di sisi klien.
+- **Commit terkait:** `c010b0c` - `docs(pmb): add comprehensive OpenAPI documentation with tags, descriptions, and error responses [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Endpoint PMB sebelumnya telah memiliki dokumentasi dasar namun belum mencakup deskripsi komprehensif aturan bisnis, pengelompokan tag terpadu di Swagger UI, serta contoh payload error 400/404/409 yang detail.
+- **Plan:** Memperkaya metadata dekorator FastAPI pada `app/routers/pmb.py` dengan `tags`, `summary`, `description` Markdown, dan kamus `responses` berstruktur `content.application.json.examples`, sembari menjaga logika endpoint tetap tidak tersentuh.
+- **Act:** Mengedit `app/routers/pmb.py`, memverifikasi skema JSON OpenAPI via `app.openapi()`, memastikan seluruh 68 unit test lolos tanpa regresi, memperbarui dokumentasi Minggu 4, serta mencatat entri log AI.
+- **Reflect:** Dokumentasi OpenAPI yang lengkap dan tersinkronisasi langsung dengan kode (*living documentation*) menjamin transparansi arsitektur API dan memudahkan kolaborasi lintas tim rekayasa perangkat lunak.
+
 
 
 

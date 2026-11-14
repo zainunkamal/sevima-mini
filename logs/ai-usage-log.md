@@ -167,3 +167,46 @@
 - **Plan:** Menyusun arsitektur use case dengan memisahkan boundary sistem, memetakan aktor manusia vs sistem eksternal, dan menerapkan relasi include/extend secara presisi tanpa anti-pattern.
 - **Act:** Meng-generate kode PlantUML, merender artefak gambar PNG, menyimpannya ke `diagram/` dan `perbaikan/minggu-02/`, serta memperbarui dokumentasi proyek.
 - **Reflect:** Kejelasan batasan tanggung jawab aktor (*boundaries of concern*) dan pemisahan prakondisi waktu (*temporal separation*) sangat penting agar Use Case Diagram mencerminkan interaksi pengguna nyata dan bukan sekadar diagram alir proses (flowchart).
+
+---
+
+### Prompt #2 (versi: Sequence Diagram Validasi KRS V1)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Merancang Sequence Diagram UML interaksi objek untuk skenario Validasi KRS dengan 6 partisipan, penerapan fragmen `loop`, `opt`, `alt`, serta pola *error accumulator* untuk menampung seluruh pesan kesalahan sekaligus.
+- **Prompt:**
+  ```text
+  Anda adalah arsitek OOP senior.
+
+  Buat sequence diagram validasi KRS dengan partisipan yang SAMA dengan
+  class diagram saya: [DAFTAR NAMA KELAS, mis. Mahasiswa, KRSManager,
+  KRSValidator, Repository, NotificationService, DosenPA].
+
+  Alur:
+  1. Mahasiswa submit KRS ke KRSManager.
+  2. KRSManager mendelegasikan validasi ke KRSValidator.
+  3. KRSValidator memakai fragmen loop untuk cek prasyarat setiap mata
+     kuliah lewat Repository.
+  4. KRSValidator (self call) menghitung total SKS, batas maksimal 24.
+  5. KRSValidator cek jadwal bentrok.
+  6. Jika valid: simpan KRS status "pending approval", kirim notifikasi
+     ASINKRON ke DosenPA melalui NotificationService.
+
+  Alternate flow (fragmen alt; kumpulkan SEMUA error sekaligus):
+  - Prasyarat belum lulus: pesan menyebut mata kuliah prasyarat yang kurang.
+  - Total SKS > 24: pesan menyebut total dan batas (mis. "SKS Anda 26, batas 24").
+  - Jadwal bentrok: pesan menyebut dua mata kuliah yang bertabrakan.
+
+  Format output: Mermaid sequenceDiagram dalam satu code block,
+  tanpa penjelasan panjang.
+  ```
+- **Output ringkas:** Kode sumber Mermaid tersimpan di [sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.mmd), spesifikasi teknis di [sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.md), dan bukti visual tangkapan layar di [sequence_diagram_versi_1.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02/sequence_diagram_versi_1.png).
+- **Keputusan Arsitektur Utama:**
+  1. Penerapan pola *Error Accumulator* pada `KRSValidator` agar validasi tidak berhenti prematur (*fail-fast*) melainkan mengevaluasi seluruh aturan (prasyarat, batas 24 SKS, dan jadwal bentrok) untuk memberikan umpan balik menyeluruh kepada mahasiswa.
+  2. Penggunaan pesan asinkron (`-)`) dari `KRSManager` ke `NotificationService` untuk mencegah latensi pengiriman pesan menghambat alur respon pengajuan KRS.
+- **Commit terkait:** `910b8f0` - `feat: add KRS validation sequence diagram (version 1) and screenshot evidence` [AI-assisted]
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Dalam skenario validasi formulir kompleks seperti KRS, mahasiswa membutuhkan umpan balik komprehensif atas semua kesalahan yang terjadi sekaligus daripada harus memperbaiki satu per satu secara berulang.
+- **Plan:** Memetakan interaksi 6 kelas/komponen secara modular dengan pembagian peran SRP (Manager sebagai orkestrator, Validator sebagai domain rule engine, Repository sebagai data access, NotificationService sebagai pemroses event asinkron).
+- **Act:** Menulis diagram interaksi Mermaid yang patuh kaidah aktivasi objek dan fragmen kontrol, merender hasil grafis ke direktori perbaikan Minggu 2, serta memperbarui dokumentasi.
+- **Reflect:** Sequence diagram memperjelas batasan temporal dan pesan inter-objek yang tidak terlihat pada class diagram statis, melengkapi arsitektur SEVIMA Mini menjadi siap diimplementasikan ke kode sumber.

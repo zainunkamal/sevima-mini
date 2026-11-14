@@ -1,0 +1,55 @@
+sequenceDiagram
+    autonumber
+    actor Mahasiswa
+    participant KRSManager
+    participant KRSValidator
+    participant Repository
+    participant NotificationService
+    actor DosenPA
+
+    Mahasiswa ->>+ KRSManager: submitKRS(mahasiswaId, daftarMatkul)
+    KRSManager ->>+ KRSValidator: validateKRS(mahasiswaId, daftarMatkul)
+    Note over KRSValidator: Inisialisasi koleksi penampung error (listError = [])
+
+    %% 1. Pengecekan Prasyarat Mata Kuliah (Loop)
+    loop Untuk setiap mata kuliah dalam daftarMatkul
+        KRSValidator ->>+ Repository: getPrasyarat(kodeMK)
+        Repository -->>- KRSValidator: daftarPrasyarat
+        KRSValidator ->>+ Repository: getRiwayatLulus(mahasiswaId)
+        Repository -->>- KRSValidator: riwayatLulus
+        opt Prasyarat belum terpenuhi
+            KRSValidator ->> KRSValidator: catatError("Prasyarat " + namaMK + " kurang: " + prasyaratKurang)
+        end
+    end
+
+    %% 2. Penghitungan Total SKS (Self Call)
+    KRSValidator ->>+ KRSValidator: hitungTotalSKS(daftarMatkul)
+    KRSValidator -->>- KRSValidator: totalSKS
+    opt totalSKS > 24
+        KRSValidator ->> KRSValidator: catatError("SKS Anda " + totalSKS + ", batas 24")
+    end
+
+    %% 3. Pengecekan Jadwal Bentrok
+    KRSValidator ->>+ Repository: getJadwalKuliah(daftarMatkul)
+    Repository -->>- KRSValidator: daftarJadwal
+    KRSValidator ->>+ KRSValidator: cekBentrokJadwal(daftarJadwal)
+    KRSValidator -->>- KRSValidator: daftarBentrok
+    opt Terdapat jadwal bertabrakan
+        KRSValidator ->> KRSValidator: catatError("Jadwal bentrok: " + matkulA + " dan " + matkulB + " bertabrakan")
+    end
+
+    KRSValidator -->>- KRSManager: validationResult(isValid, listError)
+
+    %% Alternate Flow: Evaluasi Hasil Validasi (Kumpulkan Semua Error Sekaligus)
+    alt isValid == true (Validasi Berhasil - Tanpa Error)
+        KRSManager ->>+ Repository: saveKRS(krsId, "pending approval")
+        Repository -->>- KRSManager: status OK
+        
+        KRSManager -) NotificationService: kirimNotifikasiAsync(dosenId, krsId)
+        Note over KRSManager,NotificationService: Pemanggilan asinkron (fire-and-forget)
+        NotificationService -) DosenPA: notifikasiKRSMasuk(krsId, mahasiswaId)
+        
+        KRSManager -->>- Mahasiswa: responseSukses("KRS berhasil diajukan dengan status pending approval")
+    else isValid == false (Validasi Gagal - Mengembalikan SEMUA Error)
+        KRSManager -->> Mahasiswa: responseError("Pengajuan KRS ditolak:\n- Prasyarat Algoritma Lanjut kurang: Struktur Data\n- SKS Anda 26, batas 24\n- Jadwal bentrok: Basis Data II dan Jaringan Komputer bertabrakan")
+    end

@@ -71,9 +71,9 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 ---
 
-## Minggu 2: Perancangan Use Case Diagram (Versi 1)
+## Minggu 2: Pemodelan Dinamis (Use Case & Sequence Diagram Versi 1)
 
-### 1. Versi 1: Perancangan Standar Formal UML 2.5
+### 1. Versi 1: Use Case Diagram SEVIMA Mini
 ![Versi 1 - Use Case Diagram](minggu-02/use_case_versi_1.png)
 
 - **Karakteristik & Implementasi:**
@@ -84,6 +84,19 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
     - `(Bayar Denda Keterlambatan) ..> (Bayar SPP) : <<extend>>` dengan extension point `[lewat jatuh tempo]`.
     - `(Ajukan Revisi KRS) ..> (Isi KRS) : <<extend>>` dengan extension point `[ditolak PA / masa KPRS]`.
 - **Berkas Model:** [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
+
+### 2. Versi 1: Sequence Diagram Validasi KRS
+![Versi 1 - Sequence Diagram Validasi KRS](minggu-02/sequence_diagram_versi_1.png)
+
+- **Karakteristik & Implementasi:**
+  - **6 Partisipan Terkoordinasi:** `Mahasiswa`, `KRSManager`, `KRSValidator`, `Repository`, `NotificationService`, dan `DosenPA`.
+  - **Error Accumulator Pattern:** Seluruh aturan validasi (prasyarat, batas 24 SKS, jadwal bentrok) dievaluasi lengkap tanpa berhenti di error pertama (*fail-fast*), mengumpulkan semua pesan kesalahan dalam satu koleksi.
+  - **Fragmen Kontrol UML:**
+    - `loop`: Cek prasyarat setiap mata kuliah lewat `Repository`.
+    - *Self-call*: `hitungTotalSKS` dengan validasi batas 24 SKS.
+    - `opt`: Pengecekan deteksi jadwal bertabrakan.
+    - `alt`: Percabangan sukses (simpan status *"pending approval"* & notifikasi asinkron via `NotificationService` ke `DosenPA`) vs gagal (mengembalikan seluruh error rincian prasyarat, SKS, dan bentrok).
+- **Berkas Model:** [sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.mmd) & [sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.md)
 
 ---
 
@@ -102,6 +115,7 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 ## Berkas Terkait
 
+- Sequence Diagram Validasi KRS (Versi 1): [sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.mmd) & [sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.md)
 - Use Case Diagram (Versi 1): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
 - Kode Mermaid Class Diagram Versi 4: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd)
 - Spesifikasi Teknis & Aturan Bisnis Class Diagram: [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)

@@ -539,7 +539,7 @@
 - **Keputusan Arsitektur Utama:**
   1. **Kepatuhan Kontrak Dokumen Tugas:** Opsi A dipilih agar sistem mematuhi ekspektasi penilaian tugas akademik yang mensyaratkan kode respons `HTTP 400` untuk input format nomor HP atau data registrasi yang salah.
   2. **Eliminasi Inkonsistensi Swagger:** Secara bawaan di FastAPI, pengubahan status melalui exception handler tidak otomatis mengubah skema OpenAPI. Dengan mengimplementasikan `custom_openapi()`, tampilan Swagger UI disinkronkan secara total sehingga tidak menampilkan status 422 yang sudah tidak lagi dipakai.
-- **Commit terkait:** `pending` - `feat(api): adopt Option A overriding RequestValidationError to 400 with Swagger sync [AI-Assisted]`
+- **Commit terkait:** `11ab6a9` - `feat(api): adopt Option A overriding RequestValidationError to 400 with Swagger sync [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Terdapat diskrepansi antara konvensi modern FastAPI (HTTP 422) dengan naskah spesifikasi tugas yang mengasumsikan HTTP 400 untuk format input tidak valid. Selain itu, mengubah exception handler di FastAPI tanpa memodifikasi skema OpenAPI meninggalkan dokumentasi Swagger yang tidak sinkron.

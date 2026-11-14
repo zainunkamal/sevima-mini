@@ -356,13 +356,14 @@ Keputusan desain arsitektural penting dicatat menggunakan format ADR resmi:
 
 ## 🤖 Catatan Transparansi Penggunaan AI
 
-Seluruh interaksi bersama AI (Gemini 3.8 Flash) dicatat secara transparan pada [logs/ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md) dengan menerapkan siklus refleksi **OPAR (Observe - Plan - Act - Reflect)** untuk setiap iterasi prompt (Minggu 1 hingga Minggu 3).
+Seluruh interaksi bersama AI (Gemini 3.8 Flash) dicatat secara transparan pada [logs/ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md) dengan menerapkan siklus refleksi **OPAR (Observe - Plan - Act - Reflect)** untuk setiap iterasi prompt (Minggu 1 hingga Minggu 4).
 
 ---
 
 ## 🔗 Tautan Dokumen & Berkas Cepat
 
 - [README Perbaikan & Screenshot Evolusi](file:///home/zainun/git/istn/sevima-mini/perbaikan/README.md)
+- [Dokumentasi Minggu 4: Generator NIM, Konkurensi Database & Pytest PMB](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md)
 - [Spesifikasi Class Diagram Lengkap](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 - [Source Code Mermaid Class Diagram](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd)
 - [Dokumen Keputusan Arsitektur ADR-001 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf)

@@ -55,7 +55,34 @@ Fungsi diimplementasikan pada [app/services/pmb.py](file:///home/zainun/git/istn
 def generate_nim(db: Session, tahun: int, kode_prodi: str) -> str:
     prodi_str = str(kode_prodi).strip().zfill(3)
 
-    # 1. Kueri counter dengan exclusive row lock (FOR UPDATE)
+    # 1. Pastikan baris counter ada via atomic native UPSERT
+    # Mencegah Gap-Lock Deadlock (InnoDB Error 1213) saat baris counter pertama dibuat bersamaan
+    dialect_name = db.bind.dialect.name if db.bind else "sqlite"
+    if dialect_name == "mysql":
+        from sqlalchemy.dialects.mysql import insert as mysql_insert
+        stmt_init = (
+            mysql_insert(NimCounter)
+            .values(tahun=tahun, kode_prodi=prodi_str, last_number=0)
+            .on_duplicate_key_update(tahun=NimCounter.tahun)
+        )
+        db.execute(stmt_init)
+    elif dialect_name == "sqlite":
+        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+        stmt_init = (
+            sqlite_insert(NimCounter)
+            .values(tahun=tahun, kode_prodi=prodi_str, last_number=0)
+            .on_conflict_do_nothing()
+        )
+        db.execute(stmt_init)
+    else:
+        try:
+            with db.begin_nested():
+                db.add(NimCounter(tahun=tahun, kode_prodi=prodi_str, last_number=0))
+                db.flush()
+        except IntegrityError:
+            pass
+
+    # 2. Karena baris dijamin sudah ada, FOR UPDATE hanya mengambil RECORD LOCK murni
     stmt = (
         select(NimCounter)
         .where(
@@ -65,18 +92,8 @@ def generate_nim(db: Session, tahun: int, kode_prodi: str) -> str:
         .with_for_update()
     )
     counter = db.scalar(stmt)
-
-    # 2. Inisialisasi awal aman untuk konkurensi via SAVEPOINT (nested transaction)
     if counter is None:
-        try:
-            with db.begin_nested():
-                counter = NimCounter(tahun=tahun, kode_prodi=prodi_str, last_number=0)
-                db.add(counter)
-                db.flush()
-        except IntegrityError:
-            pass  # Worker lain sudah melakukan insert di milidetik yang sama
-
-        counter = db.scalar(stmt)
+        raise RuntimeError(f"Gagal menginisialisasi atau mengunci baris counter NIM prodi {prodi_str}")
 
     # 3. Validasi batas kuota 4 digit
     if counter.last_number >= 9999:
@@ -97,7 +114,7 @@ def generate_nim(db: Session, tahun: int, kode_prodi: str) -> str:
 ### Prinsip Transaksi:
 1. **Tidak Ada Commit Internal:** `generate_nim` hanya memanggil `db.flush()`. Perubahan nomor urut dikirim ke *engine buffer* transaksi aktif tanpa mengakhiri siklus transaksi.
 2. **Kepemilikan Transaksi Ada di Endpoint:** Transaksi basis data sepenuhnya menjadi hak endpoint/service layer. Jika operasi berikutnya (misal approval calon mahasiswa) gagal, endpoint dapat melakukan `db.rollback()`, dan kenaikan nomor urut dibatalkan secara bersih tanpa meninggalkan celah nomor urut loncat (*gap*).
-3. **Pencegahan Deadlock Inisialisasi Awal:** Penggunaan `with db.begin_nested()` (SAVEPOINT) mencegah benturan *gap-lock* saat baris counter pertama kali dibuat secara bersamaan oleh dua worker.
+3. **Pencegahan Gap-Lock Deadlock:** Penggunaan atomic UPSERT menjamin baris telah terdaftar secara fisik sebelum `SELECT ... FOR UPDATE` dipanggil, sehingga mesin MySQL InnoDB hanya menempatkan *Record Lock* murni dan kebal terhadap deadlock insert intention.
 
 ---
 
@@ -230,6 +247,41 @@ Pada [tests/test_pmb_pytest.py](file:///home/zainun/git/istn/sevima-mini/tests/t
 
 ---
 
+## 📌 Bagian 9: Perbaikan Arsitektur Konkurensi Tingkat Lanjut (Hasil Tinjauan Kritis Senior Backend)
+
+Berdasarkan tinjauan kritis mendalam terhadap arsitektur konkurensi, telah dilakukan 5 perbaikan teknis berisiko tinggi untuk menjamin skalabilitas enterprise di lingkungan produksi:
+
+### 1. Mitigasi Gap-Lock Deadlock pada Baris Counter Pertama (MySQL InnoDB Error 1213)
+- **Akar Masalah:** Jika baris counter `(tahun, kode_prodi)` belum ada di database, kueri `SELECT ... FOR UPDATE` mengambil *Gap Lock* pada rentang indeks. Ketika dua worker konkuren kemudian sama-sama mencoba menyisipkan baris awal, keduanya meminta *Insert Intention Lock* yang saling memblokir dan berujung pada **Deadlock fatal (MySQL Error 1213: Deadlock found when trying to get lock)**.
+- **Solusi Rekayasa:** Menggunakan atomic native UPSERT terlebih dahulu (`INSERT ... ON DUPLICATE KEY UPDATE` pada MySQL InnoDB, dan `INSERT ... ON CONFLICT DO NOTHING` pada SQLite) sebelum memanggil `SELECT ... FOR UPDATE`.
+- **Hasil:** Baris counter dijamin selalu sudah ada secara fisik sebelum pembacaan terkunci. Oleh karena itu, `SELECT ... FOR UPDATE` hanya mengambil **Record Lock murni (X-Lock)** tanpa celah pembentukan Gap Lock deadlock.
+
+### 2. Konsistensi Urutan Penguncian (Lock Ordering) & Durasi Penguncian Minimum
+- **Pola Urutan Kunci:** Transaksi menerapkan urutan penguncian global yang seragam:
+  $$\text{Lock 1: } CalonMahasiswa \longrightarrow \text{Lock 2: } NimCounter$$
+- **Prinsip Fail-Fast:** Seluruh validasi data, verifikasi eksistensi, validasi format 3 karakter kode prodi, dan pemeriksaan status dilakukan **SEBELUM** generator NIM dipanggil.
+- **Minimalisasi Durasi:** Baris `NimCounter` hanya dikunci di milidetik terakhir sebelum `db.commit()` / `db.flush()`, meminimalkan durasi *lock contention* antar-worker.
+
+### 3. Batas Transaksi & Fleksibilitas Unit of Work (`auto_commit`)
+- Ditambahkan parameter `auto_commit: bool = True` pada `PMBService.approve` dan `PMBService.reject`.
+- **Use Case 1 (Single HTTP Request):** `auto_commit=True` menjaga transaksi atomik lengkap di mana satu request selesai dengan commit mandiri.
+- **Use Case 2 (Batch / Unit of Work):** `auto_commit=False` memungkinkan orkestrator transaksi luar (misalnya batch approval import data) menggabungkan banyak operasi dalam satu transaksi besar dan melakukan commit di akhir.
+
+### 4. Idempotensi Tangguh dengan Pola Self-Healing Data Anomaly
+- **Masalah:** Jika terjadi anomali data di mana calon mahasiswa berstatus `approved` namun kolom `nim` bernilai `None` (misalnya akibat proses migrasi atau kegagalan transaksi lama), pengecekan idempotensi konvensional akan mengembalikan data tanpa NIM.
+- **Solusi:** Logika disempurnakan menjadi:
+  ```python
+  if calon.status == StatusPMB.APPROVED and calon.nim:
+      return calon
+  ```
+  Jika pendaftar berstatus `approved` tetapi `nim` kosong, sistem secara otomatis melakukan perbaikan mandiri (*self-healing*) dengan menerbitkan NIM baru dan menyimpannya. Skenario ini divalidasi pada [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) (`test_10_approve_self_healing_when_approved_without_nim`).
+
+### 5. Ketahanan Siklus Percobaan Ulang (Resilient Retry Loop)
+- Siklus retry pada `PMBService.approve` dikalibrasi untuk mencoba hingga `max_retries` (3 kali) dengan exponential backoff `time.sleep(0.05 * attempt)`.
+- Setiap kegagalan memicu `db.rollback()` segera untuk melepaskan seluruh kunci database sebelum mencoba kembali.
+
+---
+
 ## 🧪 Bukti Pengujian Otomatis
 
 Implementasi telah diuji secara menyeluruh melalui kombinasi suite pengujian otomatis:
@@ -242,9 +294,9 @@ Implementasi telah diuji secara menyeluruh melalui kombinasi suite pengujian oto
    - `test_approve_id_tidak_ada`: Penolakan approval ID fiktif HTTP 404 Not Found.
    - `test_approve_pendaftar_rejected`: Penolakan approval terhadap calon berstatus rejected HTTP 409 Conflict.
 2. [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py) (9 skenario): Format NIM 11 digit zero-padded, independensi counter, batas kuota 9999, non-commit flush, dan retry mechanism.
-3. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) (9 skenario): Transisi state machine PMB (approve, reject, idempotensi, dan penolakan 409/400/404).
+3. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) (10 skenario): Transisi state machine PMB (approve, reject, idempotensi, penolakan 409/400/404, serta self-healing approval anomali data).
 4. [tests/test_status_and_stats.py](file:///home/zainun/git/istn/sevima-mini/tests/test_status_and_stats.py) (3 skenario): Pengecekan status publik dan agregasi database-level `GROUP BY` dengan outer join.
 5. [tests/test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py) (10 skenario) & [tests/test_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb.py) (7 skenario).
 
-Seluruh suite pengujian proyek (total **45 test pada runner Pytest** dan **38 test pada runner Unittest**) **lolos 100% tanpa error**.
+Seluruh suite pengujian proyek (total **46 test pada runner Pytest** dan **39 test pada runner Unittest**) **lolos 100% tanpa error**.
 

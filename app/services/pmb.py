@@ -106,6 +106,8 @@ def generate_nim(db: Session, tahun: int, kode_prodi: str) -> str:
 
     Karakteristik & Integritas:
     - Multi-worker safe: Menggunakan SELECT ... FOR UPDATE (exclusive row lock di DB engine).
+    - Mencegah Gap Lock Deadlock (InnoDB): Baris counter diinisialisasi via atomic UPSERT
+      sehingga SELECT ... FOR UPDATE hanya mengambil RECORD LOCK murni pada baris yang sudah ada.
     - Database independent: SQLite saat pengujian mengabaikan with_for_update() secara aman.
     - Transaction boundary: TIDAK commit sendiri (hanya db.flush()); transaksi dikendalikan oleh endpoint.
     - Batas kuota: Membatasi nomor urut hingga 9999; jika melebihi, melempar NimLimitExceededError.
@@ -113,7 +115,36 @@ def generate_nim(db: Session, tahun: int, kode_prodi: str) -> str:
     """
     prodi_str = str(kode_prodi).strip().zfill(3)
 
-    # 1. Kueri counter dengan row lock (FOR UPDATE)
+    # 1. Pastikan baris counter ada di database menggunakan native atomic UPSERT.
+    # Mencegah fenomena Gap Lock Deadlock (MySQL Error 1213) saat 2 worker secara konkuren
+    # mengakses kombinasi (tahun, kode_prodi) yang belum pernah dibuat sebelumnya.
+    dialect_name = db.bind.dialect.name if db.bind else "sqlite"
+    if dialect_name == "mysql":
+        from sqlalchemy.dialects.mysql import insert as mysql_insert
+        stmt_init = (
+            mysql_insert(NimCounter)
+            .values(tahun=tahun, kode_prodi=prodi_str, last_number=0)
+            .on_duplicate_key_update(tahun=NimCounter.tahun)
+        )
+        db.execute(stmt_init)
+    elif dialect_name == "sqlite":
+        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+        stmt_init = (
+            sqlite_insert(NimCounter)
+            .values(tahun=tahun, kode_prodi=prodi_str, last_number=0)
+            .on_conflict_do_nothing()
+        )
+        db.execute(stmt_init)
+    else:
+        try:
+            with db.begin_nested():
+                db.add(NimCounter(tahun=tahun, kode_prodi=prodi_str, last_number=0))
+                db.flush()
+        except IntegrityError:
+            pass
+
+    # 2. Karena baris DIPASTIKAN SUDAH ADA, kueri FOR UPDATE hanya mengambil
+    # RECORD LOCK murni pada baris tersebut, bukan Gap Lock.
     stmt = (
         select(NimCounter)
         .where(
@@ -123,22 +154,8 @@ def generate_nim(db: Session, tahun: int, kode_prodi: str) -> str:
         .with_for_update()
     )
     counter = db.scalar(stmt)
-
-    # 2. Inisialisasi baris awal jika kombinasi (tahun, prodi) baru pertama kali digunakan
     if counter is None:
-        try:
-            # Gunakan savepoint (nested transaction) untuk mencegah kegagalan fatal
-            # jika dua worker mengeksekusi inisialisasi pada waktu yang sama
-            with db.begin_nested():
-                counter = NimCounter(tahun=tahun, kode_prodi=prodi_str, last_number=0)
-                db.add(counter)
-                db.flush()
-        except IntegrityError:
-            # Worker lain sudah berhasil melakukan inisialisasi
-            pass
-
-        # Ambil kembali instance yang kini sudah pasti ada dan terkunci
-        counter = db.scalar(stmt)
+        raise RuntimeError(f"Gagal menginisialisasi atau mengunci baris counter NIM prodi {prodi_str}")
 
     # 3. Validasi batas kuota nomor urut (maksimal 9999)
     if counter.last_number >= 9999:
@@ -169,19 +186,20 @@ class PMBService:
         calon_id: int,
         tahun: Optional[int] = None,
         max_retries: int = 3,
+        auto_commit: bool = True,
     ) -> CalonMahasiswa:
         """
         Menyetujui pendaftaran calon mahasiswa:
-        - State machine: pending -> approved; approved final; rejected -> 409.
-        - Idempotent: jika sudah approved, kembalikan 200 + NIM lama tanpa memanggil generator.
-        - Menggunakan with_for_update untuk exclusive row lock.
-        - Validasi kode prodi wajib 3 digit angka & prodi ditemukan -> 400 jika tidak valid.
-        - Catat approved_at (UTC).
-        - Commit sekali di akhir (satu transaksi atomik).
+        - Urutan kunci konsisten: CalonMahasiswa dikunci terlebih dahulu, disusul NimCounter.
+        - Meminimalkan durasi penguncian counter: validasi tuntas sebelum memanggil generate_nim.
+        - Idempotent & self-healing: jika sudah approved & NIM ada -> 200; jika NIM anomali (None) -> perbaiki.
+        - Jika rejected -> 409 (status final, tidak boleh transisi).
+        - Validasi kode prodi wajib 3 karakter alfanumerik.
+        - auto_commit: True untuk endpoint tunggal, False untuk bulk/unit-of-work composability.
         """
         for attempt in range(1, max_retries + 1):
             try:
-                # 1. Ambil pendaftar dengan exclusive row lock (with_for_update)
+                # 1. Ambil pendaftar dengan exclusive row lock (Lock Urutan Pertama)
                 stmt = (
                     select(CalonMahasiswa)
                     .where(CalonMahasiswa.id == calon_id)
@@ -196,8 +214,9 @@ class PMBService:
                         detail=f"Calon mahasiswa dengan ID {calon_id} tidak ditemukan.",
                     )
 
-                # Jika sudah approved -> kembalikan 200 + NIM lama TANPA memanggil generator (idempotent)
-                if calon.status == StatusPMB.APPROVED:
+                # Idempotent & Self-Healing:
+                # Jika sudah approved dan NIM sudah ada -> murni idempotent
+                if calon.status == StatusPMB.APPROVED and calon.nim:
                     return calon
 
                 # Jika rejected -> 409 (status final, tidak boleh transisi)
@@ -226,24 +245,28 @@ class PMBService:
                 # Catat approved_at (UTC)
                 calon.approved_at = datetime.now(timezone.utc)
 
-                # Panggil generator NIM
+                # Panggil generator NIM (Lock Urutan Kedua, ditahan sesingkat mungkin sebelum commit/flush)
                 tahun_aktif = tahun or datetime.now(timezone.utc).year
                 calon.nim = generate_nim(db, tahun=tahun_aktif, kode_prodi=prodi.kode)
 
                 # Transisi status ke approved
                 calon.status = StatusPMB.APPROVED
 
-                # Commit SEKALI di akhir (satu transaksi atomik)
-                db.commit()
-                db.refresh(calon)
+                # Batas Transaksi: Dukung auto_commit untuk endpoint atau flush untuk bulk unit of work
+                if auto_commit:
+                    db.commit()
+                    db.refresh(calon)
+                else:
+                    db.flush()
+
                 return calon
 
-            except (IntegrityError, OperationalError):
+            except (IntegrityError, OperationalError) as exc:
                 db.rollback()
                 if attempt == max_retries:
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
-                        detail="Gagal menyetujui pendaftaran setelah 3 kali percobaan karena konflik integritas data.",
+                        detail="Gagal menyetujui pendaftaran setelah beberapa kali percobaan karena konflik integritas data.",
                     )
                 time.sleep(0.05 * attempt)
             except NimLimitExceededError as exc:
@@ -260,14 +283,18 @@ class PMBService:
                 raise
 
     @staticmethod
-    def reject(db: Session, calon_id: int) -> CalonMahasiswa:
+    def reject(
+        db: Session,
+        calon_id: int,
+        auto_commit: bool = True,
+    ) -> CalonMahasiswa:
         """
         Menolak pendaftaran calon mahasiswa:
         - State machine: hanya boleh dari pending.
         - Idempotent: jika sudah rejected -> 200.
         - Approved final: jika sudah approved -> 409.
         - Menggunakan with_for_update untuk exclusive row lock.
-        - Commit sekali di akhir (satu transaksi).
+        - auto_commit: True untuk endpoint, False untuk bulk operations.
         """
         try:
             # 1. Ambil pendaftar dengan exclusive row lock (with_for_update)
@@ -299,9 +326,13 @@ class PMBService:
             # Transisi dari pending ke rejected
             calon.status = StatusPMB.REJECTED
 
-            # Commit SEKALI di akhir
-            db.commit()
-            db.refresh(calon)
+            # Batas Transaksi
+            if auto_commit:
+                db.commit()
+                db.refresh(calon)
+            else:
+                db.flush()
+
             return calon
 
         except HTTPException:

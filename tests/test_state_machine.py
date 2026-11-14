@@ -188,3 +188,19 @@ class TestPMBStateMachine(unittest.TestCase):
         """PUT /api/pmb/reject/{id}: ID tidak ada mengembalikan 404 Not Found."""
         res = self.client.put("/api/pmb/reject/999999")
         self.assertEqual(res.status_code, 404)
+
+    def test_10_approve_self_healing_when_approved_without_nim(self):
+        """PUT /api/pmb/approve/{id}: Anomali data (status approved tapi nim None) diperbaiki dengan menerbitkan NIM."""
+        # Arrange: buat calon berstatus approved tetapi nim masih None
+        calon = self._create_calon(status=StatusPMB.APPROVED, email="anomaly@example.com")
+        self.assertIsNone(calon.nim)
+
+        # Act: panggil approve kembali
+        res = self.client.put(f"/api/pmb/approve/{calon.id}")
+
+        # Assert: sistem self-healing menerbitkan NIM baru
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "approved")
+        self.assertIsNotNone(data["nim"])
+

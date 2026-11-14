@@ -244,3 +244,29 @@
 - **Plan:** Memisahkan alur transaksi utama dengan komunikasi asinkron (`-)`), menambahkan mekanisme retry dan logging (DLQ pattern) agar kegagalan layanan email pihak ketiga tidak membatalkan proses penerimaan mahasiswa.
 - **Act:** Mengimplementasikan diagram interaksi Mermaid dengan fragmen `alt` bertingkat, mengonversi ke artefak visual beresolusi tinggi, dan menyimpannya ke direktori repositori.
 - **Reflect:** Pemodelan alternate flow yang tangguh (*resilient architecture*) membedakan rancangan sistem level pemula dengan arsitektur enterprise siap produksi.
+
+---
+
+### Prompt #4 (versi: Penyelarasan Penuh Arsitektur & Sinkronisasi Opsi A)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Menyelaraskan seluruh ketidaksinkronan antara Class Diagram, Use Case Diagram, dan Sequence Diagrams menggunakan Opsi A (Layered Architecture), serta melengkapi sequence diagram hingga mencakup 100% use case.
+- **Prompt:**
+  ```text
+  oke saya mau kamu sesuaikan semuanya berdasarkan temuan sinkronisasi diatas. Untuk No.1 saya ingin menggunakan Opsi A
+  ```
+- **Output ringkas:**
+  1. Class Diagram diperbarui ke Versi 5 dengan penambahan `KRSManager`, `KRSValidator`, `PMBService`, `UserFactory`, `Repository`, dan `NotificationService`.
+  2. Use Case Diagram diselaraskan dengan penambahan aktor `Calon Mahasiswa` mendampingi `Sistem PMB`.
+  3. Sequence Diagram KRS dan PMB diselaraskan method dan partisipannya (`Dosen` dan `Repository`).
+  4. Penambahan 3 Sequence Diagram baru: `krs-approval-sequence-diagram.mmd` (Approve/Revisi KRS), `payment-sequence-diagram.mmd` (Bayar SPP & Denda), dan `grading-transcript-sequence-diagram.mmd` (Input Nilai & Transkrip) sehingga 100% dari 10 use case terpetakan.
+  5. Seluruh bukti visual tangkapan layar dirender dan disimpan di folder `perbaikan/minggu-02/`.
+- **Keputusan Arsitektur Utama:**
+  - Menerapkan arsitektur berlapis (Clean/Layered Architecture) yang memisahkan Controller/Manager, Domain Service, Factory, Data Access (Repository), dan Infrastructure (Notification).
+  - Konsistensi 100% antara signature method di Class Diagram dan pemanggilan pesan di seluruh Sequence Diagram.
+- **Commit terkait:** `177e78b` - `feat: synchronize class diagram (v5), use case (v2), and complete 100% sequence coverage` [AI-assisted]
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Hasil audit komparasi silang (*cross-model verification*) mengungkap ketimpangan antara model data statis (hanya entitas) dengan model dinamis (yang membutuhkan lapisan service dan repository).
+- **Plan:** Mengadopsi Opsi A secara terstruktur dengan mengekspansi Class Diagram ke Versi 5, menyelaraskan nama aktor dan method, serta menutup celah use case yang belum memiliki sequence diagram.
+- **Act:** Memperbarui kode Mermaid dan PlantUML, merender 7 diagram beresolusi tinggi, dan menyinkronkan seluruh dokumentasi teknis proyek.
+- **Reflect:** Model sistem perangkat lunak yang matang harus memiliki koherensi vertikal (antar-lapisan arsitektur) dan horizontal (antar-sudut pandang UML: struktural, fungsional, dan perilaku interaksi).

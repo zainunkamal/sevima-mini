@@ -1,6 +1,10 @@
-# Class Diagram UML - SEVIMA Mini (Versi 4: Perbaikan Arsitektur Kritis 1-4)
+# Class Diagram UML - SEVIMA Mini (Versi 5: Integrasi Arsitektur Berlapis)
 
-Diagram kelas UML untuk sistem informasi akademik kampus kecil **SEVIMA Mini** yang telah disempurnakan berdasarkan hasil kritik arsitektural terhadap kelemahan kritis 1 hingga 4.
+Diagram kelas UML untuk sistem informasi akademik kampus kecil **SEVIMA Mini** yang telah disempurnakan berdasarkan temuan sinkronisasi pemodelan dinamis (Opsi A: Integrasi Layered Architecture, Application Service, Factory, Data Access, dan Infrastructure).
+
+---
+
+## 🛠️ Kode Sumber Mermaid (Versi 5)
 
 ```mermaid
 classDiagram
@@ -33,6 +37,7 @@ classDiagram
         +tambahEnrollment(Enrollment enrollment) boolean
         +getDaftarMatkulLulus() String[]
         +lihatKHS(int semester) void
+        +terimaNotifikasi(String pesan) void
     }
 
     class Dosen {
@@ -41,6 +46,7 @@ classDiagram
         +inputNilai(Enrollment enrollment, float nilaiAngka) void
         +lihatJadwalMengajar() void
         +verifikasiKRS(Enrollment enrollment) void
+        +terimaNotifikasi(String pesan) void
     }
 
     class Admin {
@@ -50,6 +56,7 @@ classDiagram
         +verifikasiPMB(CalonMahasiswa calon) void
         +validasiPembayaran(Payment payment) void
         +kelolaAkunUser(User user) void
+        +cetakTranskripResmi(Object recordAkademik) void
     }
 
     class CalonMahasiswa {
@@ -60,6 +67,7 @@ classDiagram
         +daftarSeleksi() void
         +lihatPengumuman() String
         +konversiKeMahasiswa(String nimBaru, String prodi) Mahasiswa
+        +terimaNotifikasi(String subjek, String pesan) void
     }
 
     class Course {
@@ -117,8 +125,56 @@ classDiagram
         +getJumlah() double
         +getTanggalBayar() String
         +getStatus() String
-        +prosesPembayaran() void
+        +setStatus(String status) void
+        +prosesPembayaran(int semester, double jumlah) void
+        +hitungDendaKeterlambatan(int hariTerlambat) double
         +cekStatusSPP() boolean
+    }
+
+    class KRSManager {
+        +submitKRS(String mahasiswaId, String[] daftarMatkul) boolean
+        +ajukanRevisiKRS(String mahasiswaId, String[] daftarMatkul) boolean
+        +approveKRS(String krsId, String dosenId, boolean disetujui) boolean
+        +getDaftarKRSBimbingan(String dosenId) List
+    }
+
+    class KRSValidator {
+        +validateKRS(String mahasiswaId, String[] daftarMatkul) boolean
+        +hitungTotalSKS(String[] daftarMatkul) int
+        +cekBentrokJadwal(Schedule[] daftarJadwal) boolean
+    }
+
+    class PMBService {
+        +daftar(String dataDiri, Object dokumenBerkas) String
+        +verifikasiBerkas(String noPendaftaran) Object
+        +nyatakanLulus(String noPendaftaran, String prodi) boolean
+        +tolakBerkas(String noPendaftaran, String alasan) boolean
+    }
+
+    class UserFactory {
+        +createMahasiswa(String noPendaftaran, String prodi) Mahasiswa
+        +generateNIM(String prodi, int tahunMasuk) String
+        +createAkunUser(String username, String defaultPassword) User
+    }
+
+    class Repository {
+        +getPrasyarat(String kodeMK) String[]
+        +getRiwayatLulus(String mahasiswaId) String[]
+        +getJadwalKuliah(String[] daftarMatkul) Schedule[]
+        +saveKRS(String krsId, String status) boolean
+        +simpanPendaftaran(CalonMahasiswa calon) String
+        +getBerkasPendaftaran(String noPendaftaran) Object
+        +simpanMahasiswaBaru(Mahasiswa mhs) boolean
+        +updateStatusPMB(String noPendaftaran, String status) boolean
+        +getTagihanSPP(String mahasiswaId, int semester) Payment
+        +simpanGrade(String enrollmentId, Grade grade) boolean
+        +logError(String pesan, String id) void
+    }
+
+    class NotificationService {
+        +kirimNotifikasiAsync(String penerimaId, String pesan) void
+        +kirimEmail(String email, String subjek, String pesan) boolean
+        +retryKirimEmail(String email, String subjek, String pesan, int attempt) boolean
     }
 
     User <|-- Mahasiswa
@@ -135,22 +191,33 @@ classDiagram
     Dosen "1" --> "0..*" Schedule : mengajar
     Course "0..*" --> "0..*" Course : prasyarat
     CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai
+
+    KRSManager --> KRSValidator : delegasi validasi
+    KRSManager --> Repository : persistensi
+    KRSManager --> NotificationService : memicu notifikasi
+    KRSValidator --> Repository : query aturan
+    PMBService --> UserFactory : delegasi pembuatan
+    PMBService --> Repository : persistensi
+    PMBService --> NotificationService : memicu notifikasi
+    UserFactory ..> Mahasiswa : instansiasi
+    Admin --> PMBService : mengelola kelulusan
+    Mahasiswa ..> KRSManager : mengirim permohonan
+    Dosen ..> KRSManager : menyetujui
 ```
 
-## Spesifikasi Solusi Perbaikan Arsitektur (Versi 4)
+---
 
-### 1. Solusi Masalah 1: Integrasi Jadwal Riil (`Schedule`, `Enrollment`, `Dosen`)
-- **`Schedule "1" --> "0..*" Enrollment : diikuti`**: `Enrollment` (KRS) kini terhubung langsung ke sesi alokasi `Schedule`. Mahasiswa mengetahui ruang dan jam perkuliahan secara pasti, dan `Enrollment.cekBentrokJadwal(other)` dapat dijalankan dengan akurat.
-- **`Dosen "1" --> "0..*" Schedule : mengajar`**: Dosen terhubung langsung ke sesi jadwal, sehingga fungsionalitas `Dosen.lihatJadwalMengajar()` memiliki sumber data yang valid untuk ruang dan waktu mengajar.
+## 🏛️ Spesifikasi Komponen Layered Architecture (Opsi A)
 
-### 2. Solusi Masalah 2: Penanganan Transisi Siklus Hidup `CalonMahasiswa` $\rightarrow$ `Mahasiswa`
-- **Method `konversiKeMahasiswa(String nimBaru, String prodi): Mahasiswa`**: Mengakomodasi mutasi peran calon mahasiswa yang diterima menjadi mahasiswa resmi tanpa merusak identitas akun atau membuat kelas di luar requirement.
-- **Relasi Asosiasi `CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai`**: Menghubungkan riwayat pendaftaran PMB dengan entitas mahasiswa yang terdaftar.
-
-### 3. Solusi Masalah 3: Pemutusan Ketergantungan Siklik (*Circular Dependency*)
-- **`Course.cekPrasyarat(String[] kodeMatkulLulus)`**: Menggantikan parameter `Mahasiswa` dengan array kode mata kuliah lulus (`String[]`).
-- `Course` kini sepenuhnya terisolasi dan mandiri (tidak lagi bergantung pada representasi data kelas `Mahasiswa`).
-
-### 4. Solusi Masalah 4: Klarifikasi Tanggung Jawab Dokumen KRS & SKS
-- **Delegasi SKS pada `Enrollment` (`+getSks(): int`)**: Memungkinkan penghitungan SKS langsung dari asosiasi mata kuliah.
-- **Pengaturan Tanggung Jawab Semesteran pada `Mahasiswa`**: Menambahkan parameter semester pada `hitungTotalSKS(semester)`, `validasiBebanKRS(semester)` (maks 24 SKS), dan `cekDuplikasiCourse(kodeCourse, semester)`.
+1. **Application Service / Controller Layer (`KRSManager`, `PMBService`):**
+   - Bertindak sebagai orkestrator transaksi use case antara antarmuka pengguna (aktor) dan model domain.
+   - Mengisolasi kompleksitas transaksi pengajuan KRS dan alur seleksi berkas PMB.
+2. **Domain Service Layer (`KRSValidator`):**
+   - Menjalankan logika validasi lintas entitas (prasyarat kelulusan, batasan 24 SKS, pencegahan tabrakan jam kuliah).
+   - Mengumpulkan seluruh catatan kegagalan aturan (*Error Accumulator Pattern*).
+3. **Creational Factory Layer (`UserFactory`):**
+   - Mengenkapsulasi instansiasi objek `Mahasiswa`, kalkulasi algoritma format `NIM`, serta pembuatan akun `User` baru secara aman.
+4. **Data Access / Persistence Layer (`Repository`):**
+   - Mengabstraksikan penyimpanan dan pengambilan entitas `Enrollment`, `Course`, `Grade`, `Payment`, dan `CalonMahasiswa`.
+5. **Infrastructure Layer (`NotificationService`):**
+   - Menangani pengiriman email dan notifikasi push antarmuka secara asinkron (*non-blocking fire-and-forget*).

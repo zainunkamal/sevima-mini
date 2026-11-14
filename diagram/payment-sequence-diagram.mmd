@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor Mahasiswa
+    actor Admin as Admin Akademik
+    participant Payment
+    participant Repository
+    participant NotificationService
+
+    %% 1. Inisiasi Pembayaran SPP
+    Mahasiswa ->>+ Repository: getTagihanSPP(mahasiswaId, semester)
+    Repository -->>- Mahasiswa: tagihan(jumlahSPP, tanggalJatuhTempo)
+
+    %% 2. Evaluasi Jatuh Tempo (Use Case: Bayar SPP vs Bayar Denda Keterlambatan)
+    alt Pembayaran Tepat Waktu (Use Case: Bayar SPP)
+        Mahasiswa ->>+ Payment: prosesPembayaran(semester, jumlahSPP)
+        Payment ->> Payment: setStatus("lunas")
+        Payment -->>- Mahasiswa: buktiBayar(status: "lunas", total: jumlahSPP)
+
+    else Pembayaran Melewati Jatuh Tempo (Extend: Bayar Denda Keterlambatan)
+        Mahasiswa ->>+ Payment: prosesPembayaran(semester, jumlahSPP)
+        Payment ->> Payment: hitungDendaKeterlambatan(hariTerlambat)
+        Note over Payment: Biaya denda keterlambatan ditambahkan otomatis ke tagihan dasar SPP
+        Payment ->> Payment: setStatus("lunas_dengan_denda")
+        Payment -->>- Mahasiswa: buktiBayar(status: "lunas_dengan_denda", total: jumlahSPP + denda)
+    end
+
+    %% 3. Penyimpanan dan Validasi oleh Admin
+    Mahasiswa ->>+ Repository: simpanBuktiPembayaran(paymentObj)
+    Repository -->>- Mahasiswa: status OK
+
+    Admin ->>+ Repository: getDaftarPembayaran()
+    Repository -->>- Admin: listPembayaran
+    Admin ->>+ Admin: validasiPembayaran(paymentObj)
+    Admin ->>+ Repository: updateStatusVerifikasi(paymentId, "terverifikasi")
+    Repository -->>- Admin: status OK
+    Admin -) NotificationService: kirimNotifikasiAsync(mahasiswaId, "Pembayaran SPP telah diverifikasi")
+    NotificationService -) Mahasiswa: terimaNotifikasi("Status SPP Semester Ini: Terverifikasi Aktif")

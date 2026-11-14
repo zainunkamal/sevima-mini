@@ -46,14 +46,20 @@ Arsitektur kelas pada SEVIMA Mini dibangun dengan mematuhi kaidah rekayasa peran
 sevima-mini/
 ├── README.md                     # Dokumentasi utama proyek
 ├── diagram/                      # Artefak kode diagram dan spesifikasi teknis
-│   ├── class-diagram.mmd         # Kode sumber Mermaid class diagram (Versi 4)
+│   ├── class-diagram.mmd         # Kode sumber Mermaid class diagram (Versi 5 - Layered Architecture)
 │   ├── class-diagram.md          # Spesifikasi rinci atribut, method, relasi, dan aturan bisnis
-│   ├── use-case-diagram.puml     # Kode sumber PlantUML Use Case Diagram (Versi 1)
+│   ├── use-case-diagram.puml     # Kode sumber PlantUML Use Case Diagram (Versi 2)
 │   ├── use-case-diagram.md       # Spesifikasi formal use case, aktor, dan relasi include/extend
-│   ├── krs-sequence-diagram.mmd  # Kode sumber Mermaid Sequence Diagram Validasi KRS (Versi 1)
+│   ├── krs-sequence-diagram.mmd  # Kode sumber Sequence Diagram Pengisian & Validasi KRS
 │   ├── krs-sequence-diagram.md   # Spesifikasi alur validasi komprehensif & error accumulator
-│   ├── pmb-sequence-diagram.mmd  # Kode sumber Mermaid Sequence Diagram PMB (Versi 1)
-│   └── pmb-sequence-diagram.md   # Spesifikasi alur PMB, factory pattern, & resilient notification
+│   ├── pmb-sequence-diagram.mmd  # Kode sumber Sequence Diagram PMB
+│   ├── pmb-sequence-diagram.md   # Spesifikasi alur PMB, factory pattern, & resilient notification
+│   ├── krs-approval-sequence-diagram.mmd # Kode sumber Sequence Diagram Persetujuan & Revisi KRS
+│   ├── krs-approval-sequence-diagram.md  # Spesifikasi alur Approve & Revisi KRS
+│   ├── payment-sequence-diagram.mmd      # Kode sumber Sequence Diagram Pembayaran SPP & Denda
+│   ├── payment-sequence-diagram.md       # Spesifikasi alur transaksi keuangan & denda keterlambatan
+│   ├── grading-transcript-sequence-diagram.mmd # Kode sumber Sequence Diagram Penilaian & Transkrip
+│   └── grading-transcript-sequence-diagram.md  # Spesifikasi alur input nilai & penerbitan transkrip
 ├── perbaikan/                    # Riwayat perbaikan dan bukti visual evolusi diagram
 │   ├── README.md                 # Dokumentasi komparasi perubahan antar versi
 │   ├── minggu-01/                # Bukti visual evolusi Class Diagram Minggu 1 (Versi 1-4)
@@ -61,11 +67,14 @@ sevima-mini/
 │   │   ├── diagram_sesudah_dirubah.png  # Versi 2 (Enkapsulasi penuh & hitungIPK)
 │   │   ├── diagram_versi_3.png          # Versi 3 (Refactoring relasi & kardinalitas)
 │   │   └── diagram_versi_4.png          # Versi 4 (Perbaikan arsitektur kritis 1-4)
-│   └── minggu-02/                # Bukti visual pemodelan dinamis Minggu 2
-│       ├── diagram_versi_1.png          # Screenshot Use Case Diagram Versi 1
-│       ├── use_case_versi_1.png         # Artefak Use Case Diagram Versi 1
-│       ├── sequence_diagram_versi_1.png # Screenshot Sequence Diagram Validasi KRS Versi 1
-│       └── pmb_sequence_diagram_versi_1.png # Screenshot Sequence Diagram PMB Versi 1
+│   └── minggu-02/                # Bukti visual pemodelan dinamis & sinkronisasi Minggu 2
+│       ├── class_diagram_versi_5.png    # Screenshot Class Diagram Versi 5
+│       ├── use_case_versi_2.png         # Screenshot Use Case Diagram Versi 2
+│       ├── krs_sequence_diagram_versi_2.png # Screenshot Sequence Validasi KRS
+│       ├── pmb_sequence_diagram_versi_2.png # Screenshot Sequence PMB
+│       ├── krs_approval_sequence_diagram_versi_1.png # Screenshot Sequence Approve/Revisi KRS
+│       ├── payment_sequence_diagram_versi_1.png      # Screenshot Sequence Pembayaran SPP
+│       └── grading_transcript_sequence_diagram_versi_1.png # Screenshot Sequence Penilaian/Transkrip
 ├── documents/                    # Dokumen keputusan arsitektural (ADR)
 │   └── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
 └── logs/                         # Catatan transparansi penggunaan AI
@@ -74,9 +83,9 @@ sevima-mini/
 
 ---
 
-## 📊 Class Diagram Terkini (Versi 4 - Final Refactor)
+## 📊 Class Diagram Terkini (Versi 5 - Integrasi Arsitektur Berlapis)
 
-Diagram kelas berikut merepresentasikan arsitektur final yang telah menyelesaikan 4 kelemahan kritis:
+Diagram kelas berikut merepresentasikan arsitektur berlapis (*Layered Architecture*) yang telah diselaraskan penuh dengan seluruh pemodelan dinamis Use Case dan Sequence Diagram:
 
 ```mermaid
 classDiagram
@@ -109,6 +118,7 @@ classDiagram
         +tambahEnrollment(Enrollment enrollment) boolean
         +getDaftarMatkulLulus() String[]
         +lihatKHS(int semester) void
+        +terimaNotifikasi(String pesan) void
     }
 
     class Dosen {
@@ -117,6 +127,7 @@ classDiagram
         +inputNilai(Enrollment enrollment, float nilaiAngka) void
         +lihatJadwalMengajar() void
         +verifikasiKRS(Enrollment enrollment) void
+        +terimaNotifikasi(String pesan) void
     }
 
     class Admin {
@@ -126,6 +137,7 @@ classDiagram
         +verifikasiPMB(CalonMahasiswa calon) void
         +validasiPembayaran(Payment payment) void
         +kelolaAkunUser(User user) void
+        +cetakTranskripResmi(Object recordAkademik) void
     }
 
     class CalonMahasiswa {
@@ -136,6 +148,7 @@ classDiagram
         +daftarSeleksi() void
         +lihatPengumuman() String
         +konversiKeMahasiswa(String nimBaru, String prodi) Mahasiswa
+        +terimaNotifikasi(String subjek, String pesan) void
     }
 
     class Course {
@@ -193,8 +206,56 @@ classDiagram
         +getJumlah() double
         +getTanggalBayar() String
         +getStatus() String
-        +prosesPembayaran() void
+        +setStatus(String status) void
+        +prosesPembayaran(int semester, double jumlah) void
+        +hitungDendaKeterlambatan(int hariTerlambat) double
         +cekStatusSPP() boolean
+    }
+
+    class KRSManager {
+        +submitKRS(String mahasiswaId, String[] daftarMatkul) boolean
+        +ajukanRevisiKRS(String mahasiswaId, String[] daftarMatkul) boolean
+        +approveKRS(String krsId, String dosenId, boolean disetujui) boolean
+        +getDaftarKRSBimbingan(String dosenId) List
+    }
+
+    class KRSValidator {
+        +validateKRS(String mahasiswaId, String[] daftarMatkul) boolean
+        +hitungTotalSKS(String[] daftarMatkul) int
+        +cekBentrokJadwal(Schedule[] daftarJadwal) boolean
+    }
+
+    class PMBService {
+        +daftar(String dataDiri, Object dokumenBerkas) String
+        +verifikasiBerkas(String noPendaftaran) Object
+        +nyatakanLulus(String noPendaftaran, String prodi) boolean
+        +tolakBerkas(String noPendaftaran, String alasan) boolean
+    }
+
+    class UserFactory {
+        +createMahasiswa(String noPendaftaran, String prodi) Mahasiswa
+        +generateNIM(String prodi, int tahunMasuk) String
+        +createAkunUser(String username, String defaultPassword) User
+    }
+
+    class Repository {
+        +getPrasyarat(String kodeMK) String[]
+        +getRiwayatLulus(String mahasiswaId) String[]
+        +getJadwalKuliah(String[] daftarMatkul) Schedule[]
+        +saveKRS(String krsId, String status) boolean
+        +simpanPendaftaran(CalonMahasiswa calon) String
+        +getBerkasPendaftaran(String noPendaftaran) Object
+        +simpanMahasiswaBaru(Mahasiswa mhs) boolean
+        +updateStatusPMB(String noPendaftaran, String status) boolean
+        +getTagihanSPP(String mahasiswaId, int semester) Payment
+        +simpanGrade(String enrollmentId, Grade grade) boolean
+        +logError(String pesan, String id) void
+    }
+
+    class NotificationService {
+        +kirimNotifikasiAsync(String penerimaId, String pesan) void
+        +kirimEmail(String email, String subjek, String pesan) boolean
+        +retryKirimEmail(String email, String subjek, String pesan, int attempt) boolean
     }
 
     User <|-- Mahasiswa
@@ -211,6 +272,18 @@ classDiagram
     Dosen "1" --> "0..*" Schedule : mengajar
     Course "0..*" --> "0..*" Course : prasyarat
     CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai
+
+    KRSManager --> KRSValidator : delegasi validasi
+    KRSManager --> Repository : persistensi
+    KRSManager --> NotificationService : memicu notifikasi
+    KRSValidator --> Repository : query aturan
+    PMBService --> UserFactory : delegasi pembuatan
+    PMBService --> Repository : persistensi
+    PMBService --> NotificationService : memicu notifikasi
+    UserFactory ..> Mahasiswa : instansiasi
+    Admin --> PMBService : mengelola kelulusan
+    Mahasiswa ..> KRSManager : mengirim permohonan
+    Dosen ..> KRSManager : menyetujui
 ```
 
 ---

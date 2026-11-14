@@ -7,6 +7,7 @@ left to right direction
 ' ========================================================
 ' DEFINISI AKTOR (Di Luar System Boundary)
 ' ========================================================
+actor "Calon Mahasiswa" as calon
 actor "Mahasiswa" as mhs
 actor "Dosen (PA)" as dosen
 actor "Admin Akademik" as admin
@@ -51,7 +52,8 @@ rectangle "SEVIMA Mini" {
 ' ASOSIASI AKTOR KE USE CASE
 ' ========================================================
 
-' Sistem PMB (Sistem Eksternal)
+' Calon Mahasiswa & Sistem PMB (Inisiasi PMB Mandiri & Integrasi Sistem)
+calon --> UC_Daftar
 pmb --> UC_Daftar
 
 ' Admin Akademik

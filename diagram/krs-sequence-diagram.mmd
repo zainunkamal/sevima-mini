@@ -5,7 +5,7 @@ sequenceDiagram
     participant KRSValidator
     participant Repository
     participant NotificationService
-    actor DosenPA
+    actor Dosen as Dosen (PA)
 
     Mahasiswa ->>+ KRSManager: submitKRS(mahasiswaId, daftarMatkul)
     KRSManager ->>+ KRSValidator: validateKRS(mahasiswaId, daftarMatkul)
@@ -47,7 +47,7 @@ sequenceDiagram
         
         KRSManager -) NotificationService: kirimNotifikasiAsync(dosenId, krsId)
         Note over KRSManager,NotificationService: Pemanggilan asinkron (fire-and-forget)
-        NotificationService -) DosenPA: notifikasiKRSMasuk(krsId, mahasiswaId)
+        NotificationService -) Dosen: notifikasiKRSMasuk(krsId, mahasiswaId)
         
         KRSManager -->>- Mahasiswa: responseSukses("KRS berhasil diajukan dengan status pending approval")
     else isValid == false (Validasi Gagal - Mengembalikan SEMUA Error)

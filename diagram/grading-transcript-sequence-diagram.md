@@ -1,0 +1,53 @@
+# Sequence Diagram - Penilaian & Penerbitan Transkrip (Versi 1)
+
+Diagram sequence UML berbasis Mermaid untuk alur proses **Penginputan Nilai oleh Dosen** dan **Penerbitan Transkrip Nilai Akademik** pada sistem informasi akademik **SEVIMA Mini**.
+
+---
+
+## 📌 Bukti Visual Diagram
+
+![Sequence Diagram Penilaian & Transkrip](../perbaikan/minggu-02/grading_transcript_sequence_diagram_versi_1.png)
+
+---
+
+## 🛠️ Kode Sumber Mermaid
+
+Kode sumber tersimpan di [grading-transcript-sequence-diagram.mmd](grading-transcript-sequence-diagram.mmd):
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Dosen as Dosen Pengampu
+    actor Mahasiswa
+    actor Admin as Admin Akademik
+    participant Grade
+    participant Repository
+
+    %% 1. Input Nilai oleh Dosen (Use Case: Input Nilai)
+    Dosen ->>+ Repository: getPesertaKelas(courseId, semester)
+    Repository -->>- Dosen: listEnrollment
+    Dosen ->> Dosen: inputNilai(enrollment, nilaiAngka)
+    Dosen ->>+ Grade: updateNilai(nilaiAngka)
+    Grade ->> Grade: hitungNilaiHuruf()
+    Grade -->>- Dosen: gradeObj(nilaiAngka, nilaiHuruf)
+    Dosen ->>+ Repository: simpanGrade(enrollmentId, gradeObj)
+    Repository -->>- Dosen: status OK
+
+    %% 2. Penerbitan Transkrip Akademik (Use Case: Generate Transkrip)
+    alt Mahasiswa Melihat KHS atau Transkrip Sementara
+        Mahasiswa ->> Mahasiswa: lihatKHS(semester)
+        Mahasiswa ->>+ Repository: getRiwayatNilai(mahasiswaId)
+        Repository -->>- Mahasiswa: daftarGrade
+        Mahasiswa ->> Mahasiswa: hitungIPK()
+    else Admin Menerbitkan Transkrip Resmi
+        Admin ->>+ Repository: getLengkapRiwayatStudi(mahasiswaId)
+        Repository -->>- Admin: recordAkademik(seluruhNilai, seluruhSKS)
+        Admin ->> Admin: cetakTranskripResmi(recordAkademik)
+    end
+```
+
+---
+
+## 🏛️ Cakupan Use Case yang Disinkronkan
+- **Use Case `Input Nilai`**: Dosen menginput nilai angka hasil evaluasi semester, objek `Grade` mengonversi nilai huruf secara otomatis, dan menyimpannya ke `Repository`.
+- **Use Case `Generate Transkrip`**: Mahasiswa dapat melihat rekapan nilai (KHS) dan kalkulasi IPK secara mandiri (`Mahasiswa.hitungIPK()`), atau Admin Akademik mencetak transkrip nilai resmi berlegalisir (`Admin.cetakTranskripResmi()`).

@@ -71,44 +71,46 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 ---
 
-## Minggu 2: Pemodelan Dinamis (Use Case & Sequence Diagram Versi 1)
+## Minggu 2: Pemodelan Dinamis & Penyelarasan Penuh Arsitektur (Sinkronisasi Versi 5)
 
-### 1. Versi 1: Use Case Diagram SEVIMA Mini
-![Versi 1 - Use Case Diagram](minggu-02/use_case_versi_1.png)
+Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan temuan evaluasi konsistensi, dengan mengadopsi **Opsi A (Layered / Clean Architecture)** dan melengkapi sequence diagram sehingga **100% dari 10 Use Case memiliki pemodelan alur dinamis**.
 
-- **Karakteristik & Implementasi:**
-  - **4 Aktor:** `Mahasiswa`, `Dosen (PA)`, `Admin Akademik` (Aktor Manusia), dan `Sistem PMB` (Aktor Sistem Eksternal `<<System>>`).
-  - **10 Use Case:** Terangkum utuh di dalam boundary *"SEVIMA Mini"* dengan konvensi penamaan *kata kerja + objek* dari perspektif pengguna.
-  - **Relasi `<<include>>`:** `(Isi KRS) ..> (Cek Prasyarat) : <<include>>` (langkah wajib internal sistem untuk validasi kelulusan matkul prasyarat, batas 24 SKS, dan pencegahan jadwal bentrok).
-  - **Relasi `<<extend>>`:**
-    - `(Bayar Denda Keterlambatan) ..> (Bayar SPP) : <<extend>>` dengan extension point `[lewat jatuh tempo]`.
-    - `(Ajukan Revisi KRS) ..> (Isi KRS) : <<extend>>` dengan extension point `[ditolak PA / masa KPRS]`.
+### 1. Class Diagram Versi 5 (Integrasi Arsitektur Berlapis)
+![Class Diagram Versi 5](minggu-02/class_diagram_versi_5.png)
+- **Pembaruan:** Menambahkan komponen *Application Service* (`KRSManager`, `PMBService`), *Domain Service* (`KRSValidator`), *Factory* (`UserFactory`), *Data Access* (`Repository`), dan *Infrastructure* (`NotificationService`). Menyelaraskan seluruh method yang dipanggil di Sequence Diagram.
+- **Berkas Model:** [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
+
+### 2. Use Case Diagram (Versi 2)
+![Use Case Diagram Versi 2](minggu-02/use_case_versi_2.png)
+- **Pembaruan:** Menambahkan aktor `Calon Mahasiswa` secara eksplisit mendampingi `Sistem PMB` untuk merefleksikan alur pendaftaran mandiri dan integrasi sistem.
 - **Berkas Model:** [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
 
-### 2. Versi 1: Sequence Diagram Validasi KRS
-![Versi 1 - Sequence Diagram Validasi KRS](minggu-02/sequence_diagram_versi_1.png)
-
-- **Karakteristik & Implementasi:**
-  - **6 Partisipan Terkoordinasi:** `Mahasiswa`, `KRSManager`, `KRSValidator`, `Repository`, `NotificationService`, dan `DosenPA`.
-  - **Error Accumulator Pattern:** Seluruh aturan validasi (prasyarat, batas 24 SKS, jadwal bentrok) dievaluasi lengkap tanpa berhenti di error pertama (*fail-fast*), mengumpulkan semua pesan kesalahan dalam satu koleksi.
-  - **Fragmen Kontrol UML:**
-    - `loop`: Cek prasyarat setiap mata kuliah lewat `Repository`.
-    - *Self-call*: `hitungTotalSKS` dengan validasi batas 24 SKS.
-    - `opt`: Pengecekan deteksi jadwal bertabrakan.
-    - `alt`: Percabangan sukses (simpan status *"pending approval"* & notifikasi asinkron via `NotificationService` ke `DosenPA`) vs gagal (mengembalikan seluruh error rincian prasyarat, SKS, dan bentrok).
+### 3. Sequence Diagram Pengisian & Validasi KRS (Versi 2)
+![Sequence Diagram Validasi KRS](minggu-02/krs_sequence_diagram_versi_2.png)
+- **Penyelarasan:** Aktor diselaraskan menjadi `Dosen as Dosen (PA)`, method tersinkron 100% dengan `KRSValidator` dan `Repository`.
+- **Cakupan Use Case:** `Isi KRS` dan `Cek Prasyarat` (`<<include>>`).
 - **Berkas Model:** [krs-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.mmd) & [krs-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.md)
 
-### 3. Versi 1: Sequence Diagram Pendaftaran Mahasiswa Baru (PMB)
-![Versi 1 - Sequence Diagram PMB](minggu-02/pmb_sequence_diagram_versi_1.png)
-
-- **Karakteristik & Implementasi:**
-  - **6 Partisipan Terkoordinasi:** `CalonMahasiswa`, `PMBService`, `Database`, `Admin`, `UserFactory`, dan `NotificationService`.
-  - **GoF Factory Pattern:** Instansiasi objek `Mahasiswa`, kalkulasi format `NIM`, serta pembuatan akun diserahkan ke `UserFactory`.
-  - **Fragmen Kontrol UML & Alternate Flow:**
-    - `alt [Berkas Lengkap & Dinyatakan Lulus]`: Admin menyatakan lulus, `PMBService` memanggil `UserFactory`, simpan mahasiswa baru ke `Database`, dan memicu notifikasi asinkron (`-)`).
-    - `alt [Email Berhasil vs Gagal]`: Mekanisme *retry* (1..3 kali) dan *error logging* ke `Database` tanpa membatalkan transaksi pendaftaran mahasiswa (*resilient non-blocking notification*).
-    - `else [Berkas Tidak Lengkap / Ditolak]`: Pembaruan status berkas di `Database` dan notifikasi asinkron perbaikan berkas ke `CalonMahasiswa`.
+### 4. Sequence Diagram Pendaftaran Mahasiswa Baru / PMB (Versi 2)
+![Sequence Diagram PMB](minggu-02/pmb_sequence_diagram_versi_2.png)
+- **Penyelarasan:** Partisipan `Database` digantikan oleh `Repository`, konsisten dengan `Repository` di Class Diagram dan Sequence KRS.
+- **Cakupan Use Case:** `Daftar sebagai Calon Mahasiswa` dan `Verifikasi Berkas`.
 - **Berkas Model:** [pmb-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.mmd) & [pmb-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.md)
+
+### 5. Sequence Diagram Persetujuan & Revisi KRS (Versi 1)
+![Sequence Diagram Persetujuan & Revisi KRS](minggu-02/krs_approval_sequence_diagram_versi_1.png)
+- **Cakupan Use Case:** `Approve KRS` dan `Ajukan Revisi KRS` (`<<extend>>`).
+- **Berkas Model:** [krs-approval-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/krs-approval-sequence-diagram.mmd) & [krs-approval-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/krs-approval-sequence-diagram.md)
+
+### 6. Sequence Diagram Pembayaran SPP & Denda Keterlambatan (Versi 1)
+![Sequence Diagram Pembayaran SPP](minggu-02/payment_sequence_diagram_versi_1.png)
+- **Cakupan Use Case:** `Bayar SPP` dan `Bayar Denda Keterlambatan` (`<<extend>>`).
+- **Berkas Model:** [payment-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/payment-sequence-diagram.mmd) & [payment-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/payment-sequence-diagram.md)
+
+### 7. Sequence Diagram Penilaian & Penerbitan Transkrip (Versi 1)
+![Sequence Diagram Penilaian & Transkrip](minggu-02/grading_transcript_sequence_diagram_versi_1.png)
+- **Cakupan Use Case:** `Input Nilai` dan `Generate Transkrip`.
+- **Berkas Model:** [grading-transcript-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/grading-transcript-sequence-diagram.mmd) & [grading-transcript-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/grading-transcript-sequence-diagram.md)
 
 ---
 
@@ -127,10 +129,12 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 ## Berkas Terkait
 
-- Sequence Diagram PMB (Versi 1): [pmb-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.mmd) & [pmb-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.md)
-- Sequence Diagram Validasi KRS (Versi 1): [krs-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.mmd) & [krs-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.md)
-- Use Case Diagram (Versi 1): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
-- Kode Mermaid Class Diagram Versi 4: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd)
-- Spesifikasi Teknis & Aturan Bisnis Class Diagram: [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
+- Sequence Diagram Persetujuan & Revisi KRS: [krs-approval-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/krs-approval-sequence-diagram.mmd) & [krs-approval-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/krs-approval-sequence-diagram.md)
+- Sequence Diagram Pembayaran SPP & Denda: [payment-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/payment-sequence-diagram.mmd) & [payment-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/payment-sequence-diagram.md)
+- Sequence Diagram Penilaian & Transkrip: [grading-transcript-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/grading-transcript-sequence-diagram.mmd) & [grading-transcript-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/grading-transcript-sequence-diagram.md)
+- Sequence Diagram PMB (Versi 2): [pmb-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.mmd) & [pmb-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.md)
+- Sequence Diagram Validasi KRS (Versi 2): [krs-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.mmd) & [krs-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.md)
+- Use Case Diagram (Versi 2): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
+- Kode Mermaid Class Diagram Versi 5: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 - Dokumen Keputusan Arsitektur: [ADR-001.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf)
 - Catatan Transparansi AI: [ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md)

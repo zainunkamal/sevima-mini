@@ -98,6 +98,18 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
     - `alt`: Percabangan sukses (simpan status *"pending approval"* & notifikasi asinkron via `NotificationService` ke `DosenPA`) vs gagal (mengembalikan seluruh error rincian prasyarat, SKS, dan bentrok).
 - **Berkas Model:** [sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.mmd) & [sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.md)
 
+### 3. Versi 1: Sequence Diagram Pendaftaran Mahasiswa Baru (PMB)
+![Versi 1 - Sequence Diagram PMB](minggu-02/pmb_sequence_diagram_versi_1.png)
+
+- **Karakteristik & Implementasi:**
+  - **6 Partisipan Terkoordinasi:** `CalonMahasiswa`, `PMBService`, `Database`, `Admin`, `UserFactory`, dan `NotificationService`.
+  - **GoF Factory Pattern:** Instansiasi objek `Mahasiswa`, kalkulasi format `NIM`, serta pembuatan akun diserahkan ke `UserFactory`.
+  - **Fragmen Kontrol UML & Alternate Flow:**
+    - `alt [Berkas Lengkap & Dinyatakan Lulus]`: Admin menyatakan lulus, `PMBService` memanggil `UserFactory`, simpan mahasiswa baru ke `Database`, dan memicu notifikasi asinkron (`-)`).
+    - `alt [Email Berhasil vs Gagal]`: Mekanisme *retry* (1..3 kali) dan *error logging* ke `Database` tanpa membatalkan transaksi pendaftaran mahasiswa (*resilient non-blocking notification*).
+    - `else [Berkas Tidak Lengkap / Ditolak]`: Pembaruan status berkas di `Database` dan notifikasi asinkron perbaikan berkas ke `CalonMahasiswa`.
+- **Berkas Model:** [pmb-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.mmd) & [pmb-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.md)
+
 ---
 
 ## Tabel Komparasi Riwayat Versi
@@ -115,6 +127,7 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 ## Berkas Terkait
 
+- Sequence Diagram PMB (Versi 1): [pmb-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.mmd) & [pmb-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.md)
 - Sequence Diagram Validasi KRS (Versi 1): [sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.mmd) & [sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/sequence-diagram.md)
 - Use Case Diagram (Versi 1): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
 - Kode Mermaid Class Diagram Versi 4: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd)

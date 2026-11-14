@@ -1,0 +1,61 @@
+sequenceDiagram
+    autonumber
+    actor CalonMahasiswa
+    participant PMBService
+    participant Database
+    actor Admin
+    participant UserFactory
+    participant NotificationService
+
+    %% 1. Pendaftaran oleh Calon Mahasiswa
+    CalonMahasiswa ->>+ PMBService: daftar(dataDiri, dokumenBerkas)
+    PMBService ->>+ Database: simpanPendaftaran(calonMhs)
+    Database -->>- PMBService: noPendaftaran
+    PMBService -->>- CalonMahasiswa: konfirmasiPendaftaran(noPendaftaran)
+
+    %% 2. Verifikasi Berkas oleh Admin
+    Admin ->>+ PMBService: verifikasiBerkas(noPendaftaran)
+    PMBService ->>+ Database: getBerkasPendaftaran(noPendaftaran)
+    Database -->>- PMBService: dataBerkas
+    PMBService -->>- Admin: tampilkanBerkas(dataBerkas)
+
+    %% 3. Alternate Flow: Evaluasi Kelengkapan Berkas
+    alt Berkas Lengkap & Dinyatakan Lulus
+        Admin ->>+ PMBService: nyatakanLulus(noPendaftaran, prodi)
+        
+        %% Pembuatan Mahasiswa & Akun via UserFactory
+        PMBService ->>+ UserFactory: createMahasiswa(noPendaftaran, prodi)
+        UserFactory ->> UserFactory: generateNIM(prodi, tahunMasuk)
+        UserFactory ->> UserFactory: createAkunUser(username, defaultPassword)
+        UserFactory -->>- PMBService: mahasiswaBaru(nim, akun)
+
+        %% Simpan data Mahasiswa ke Database
+        PMBService ->>+ Database: simpanMahasiswaBaru(mahasiswaBaru)
+        Database -->>- PMBService: status OK
+        PMBService -->>- Admin: konfirmasiKelulusan("Calon mahasiswa resmi terdaftar dengan NIM: " + nim)
+
+        %% Notifikasi Asinkron (Non-Blocking / Fire-and-Forget)
+        PMBService -) NotificationService: kirimNotifikasiAkunAsync(email, nim, credentials)
+        Note over PMBService,NotificationService: Pemanggilan asinkron: proses registrasi selesai tanpa menunggu antrean email
+
+        %% 4. Alternate Flow: Penanganan Pengiriman Email Akun
+        alt Email Berhasil Terkirim
+            NotificationService ->> CalonMahasiswa: kirimEmail("Akun Mahasiswa Baru", nim, credentials)
+        else Email Gagal Terkirim (Retry & Log - Tidak Membatalkan Pendaftaran)
+            NotificationService ->> NotificationService: retryKirimEmail(attempt: 1..3)
+            opt Tetap Gagal Setelah Batas Percobaan
+                NotificationService ->>+ Database: logError("Email gagal terkirim ke " + email, nim)
+                Database -->>- NotificationService: status OK
+                Note over NotificationService,Database: Pendaftaran TETAP SAH. Email disimpan di DLQ (Dead Letter Queue) untuk dikirim ulang oleh worker.
+            end
+        end
+
+    else Berkas Tidak Lengkap / Ditolak
+        Admin ->>+ PMBService: tolakBerkas(noPendaftaran, alasan: "Ijazah belum dilegalisir")
+        PMBService ->>+ Database: updateStatus(noPendaftaran, "berkas_tidak_lengkap")
+        Database -->>- PMBService: status OK
+        
+        PMBService -) NotificationService: kirimNotifikasiRevisiAsync(email, alasan)
+        NotificationService -) CalonMahasiswa: kirimEmail("Perbaikan Berkas PMB", alasan)
+        PMBService -->>- Admin: konfirmasi("Status pendaftaran diperbarui: Perlu Perbaikan Berkas")
+    end

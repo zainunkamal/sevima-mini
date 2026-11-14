@@ -51,7 +51,9 @@ sevima-mini/
 │   ├── use-case-diagram.puml     # Kode sumber PlantUML Use Case Diagram (Versi 1)
 │   ├── use-case-diagram.md       # Spesifikasi formal use case, aktor, dan relasi include/extend
 │   ├── sequence-diagram.mmd      # Kode sumber Mermaid Sequence Diagram Validasi KRS (Versi 1)
-│   └── sequence-diagram.md       # Spesifikasi alur validasi komprehensif & error accumulator
+│   ├── sequence-diagram.md       # Spesifikasi alur validasi komprehensif & error accumulator
+│   ├── pmb-sequence-diagram.mmd  # Kode sumber Mermaid Sequence Diagram PMB (Versi 1)
+│   └── pmb-sequence-diagram.md   # Spesifikasi alur PMB, factory pattern, & resilient notification
 ├── perbaikan/                    # Riwayat perbaikan dan bukti visual evolusi diagram
 │   ├── README.md                 # Dokumentasi komparasi perubahan antar versi
 │   ├── minggu-01/                # Bukti visual evolusi Class Diagram Minggu 1 (Versi 1-4)
@@ -62,7 +64,8 @@ sevima-mini/
 │   └── minggu-02/                # Bukti visual pemodelan dinamis Minggu 2
 │       ├── diagram_versi_1.png          # Screenshot Use Case Diagram Versi 1
 │       ├── use_case_versi_1.png         # Artefak Use Case Diagram Versi 1
-│       └── sequence_diagram_versi_1.png # Screenshot Sequence Diagram Validasi KRS Versi 1
+│       ├── sequence_diagram_versi_1.png # Screenshot Sequence Diagram Validasi KRS Versi 1
+│       └── pmb_sequence_diagram_versi_1.png # Screenshot Sequence Diagram PMB Versi 1
 ├── documents/                    # Dokumen keputusan arsitektural (ADR)
 │   └── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
 └── logs/                         # Catatan transparansi penggunaan AI

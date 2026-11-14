@@ -210,3 +210,37 @@
 - **Plan:** Memetakan interaksi 6 kelas/komponen secara modular dengan pembagian peran SRP (Manager sebagai orkestrator, Validator sebagai domain rule engine, Repository sebagai data access, NotificationService sebagai pemroses event asinkron).
 - **Act:** Menulis diagram interaksi Mermaid yang patuh kaidah aktivasi objek dan fragmen kontrol, merender hasil grafis ke direktori perbaikan Minggu 2, serta memperbarui dokumentasi.
 - **Reflect:** Sequence diagram memperjelas batasan temporal dan pesan inter-objek yang tidak terlihat pada class diagram statis, melengkapi arsitektur SEVIMA Mini menjadi siap diimplementasikan ke kode sumber.
+
+---
+
+### Prompt #3 (versi: Sequence Diagram PMB V1)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Merancang Sequence Diagram UML untuk alur Penerimaan Mahasiswa Baru (PMB) dengan 6 partisipan, penerapan Factory Pattern (`UserFactory`), pemanggilan notifikasi asinkron, serta penanganan *alternate flow* berkas tidak lengkap dan ketahanan kegagalan pengiriman email (*retry/log*).
+- **Prompt:**
+  ```text
+  Buat sequence diagram pendaftaran mahasiswa baru (PMB) dengan partisipan:
+  CalonMahasiswa, PMBService, Database, Admin, UserFactory,
+  NotificationService.
+
+  Alur: daftar -> PMBService simpan ke Database -> kembalikan nomor
+  pendaftaran; Admin verifikasi berkas dan nyatakan lulus; PMBService
+  meminta UserFactory membuat Mahasiswa lengkap dengan NIM; simpan; kirim
+  pesan ASINKRON ke NotificationService; email berisi NIM dan akun.
+
+  Tambahkan alternate flow (fragmen alt): berkas tidak lengkap, dan email
+  gagal terkirim (retry/log, jangan membatalkan pendaftaran).
+
+  Format: Mermaid sequenceDiagram dalam satu code block.
+  ```
+- **Output ringkas:** Kode sumber Mermaid tersimpan di [pmb-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.mmd), spesifikasi teknis di [pmb-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.md), dan bukti visual tangkapan layar di [pmb_sequence_diagram_versi_1.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02/pmb_sequence_diagram_versi_1.png).
+- **Keputusan Arsitektur Utama:**
+  1. Penggunaan pola kreasi `UserFactory` untuk enkapsulasi instansiasi objek `Mahasiswa`, format kalkulasi NIM, dan kredensial akun pengguna baru.
+  2. Isolasi kegagalan notifikasi email: jika pengiriman email gagal setelah 3 kali retry, error dicatat ke `Database` tanpa melakukan *rollback* terhadap status kelulusan mahasiswa baru (*non-blocking resilient notification*).
+  3. Penanganan verifikasi berkas tidak lengkap dengan notifikasi revisi ke `CalonMahasiswa`.
+- **Commit terkait:** `0126f14` - `feat: add PMB sequence diagram (version 1) and screenshot evidence` [AI-assisted]
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Pada alur pendaftaran mahasiswa baru, proses administratif (pemberian NIM & akun) memiliki dependensi transaksi yang kritis, sementara pengiriman notifikasi email bersifat *eventual consistency*.
+- **Plan:** Memisahkan alur transaksi utama dengan komunikasi asinkron (`-)`), menambahkan mekanisme retry dan logging (DLQ pattern) agar kegagalan layanan email pihak ketiga tidak membatalkan proses penerimaan mahasiswa.
+- **Act:** Mengimplementasikan diagram interaksi Mermaid dengan fragmen `alt` bertingkat, mengonversi ke artefak visual beresolusi tinggi, dan menyimpannya ke direktori repositori.
+- **Reflect:** Pemodelan alternate flow yang tangguh (*resilient architecture*) membedakan rancangan sistem level pemula dengan arsitektur enterprise siap produksi.

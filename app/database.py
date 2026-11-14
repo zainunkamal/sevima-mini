@@ -1,6 +1,7 @@
+from typing import Generator
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 DATABASE_URL = "sqlite:///./sevima_mini.db"
 
@@ -23,3 +24,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base DeclarativeBase modern (SQLAlchemy 2.0)
 class Base(DeclarativeBase):
     pass
+
+# Dependency injection generator untuk FastAPI
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

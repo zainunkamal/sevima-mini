@@ -508,7 +508,7 @@
 - **Keputusan Arsitektur Utama:**
   1. **Resilient Input Handling:** Pengguna yang mengetik nomor dengan format humanis (`0812-3456-7890` atau `+62 812 3456 7890`) tetap dilayani secara mulus karena sistem membersihkan tanda baca sebelum validasi regex dan penyimpanan ke basis data.
   2. **Inclusive Validation:** Kuantifier `{5,10}` mencegah terjadinya penolakan keliru (*false negative*) bagi pemegang nomor seluler lawas 9 digit tanpa membuka celah bagi nomor PSTN/bebas pulsa.
-- **Commit terkait:** `pending` - `feat(schemas): handle phone edge cases with pre-sanitizer and regex range update [AI-Assisted]`
+- **Commit terkait:** `3cba6cf` - `feat(schemas): handle phone edge cases with pre-sanitizer and regex range update [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Analisis kasus tepi regex mengungkap bahwa pola ketat tanpa sanitasi memicu *false negative* pada nomor dengan spasi/strip dan nomor pascabayar 9 digit yang sah di dunia nyata.

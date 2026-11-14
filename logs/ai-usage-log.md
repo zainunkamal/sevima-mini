@@ -563,7 +563,7 @@
 - **Keputusan Arsitektur Utama:**
   1. **Dokumentasi Formal Berkelanjutan:** ADR-003 melengkapi rangkaian keputusan arsitektur sebelumnya (ADR-001 pemecahan relasi M:N Enrollment dan ADR-002 dekomposisi 7 service domain).
   2. **Justifikasi Tertulis Deviasi Framework:** Mendokumentasikan secara formal alasan pemilihan Opsi A (override 400 & penghapusan 422 pada OpenAPI) agar arsitektur tetap transparan, dapat dipelihara (*maintainable*), dan dapat diaudit oleh pihak penguji.
-- **Commit terkait:** `[PENDING COMMIT HASH]` - `docs(adr): generate ADR-003 PDF document for Week 3 architectural decisions [AI-Assisted]`
+- **Commit terkait:** `98c2ec5` - `docs(adr): create ADR-003 PDF document for Week 3 architectural decisions [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Pengambilan keputusan teknis seperti pengubahan exception handler, konfigurasi koneksi driver basis data, dan urutan DDL migrasi memerlukan justifikasi tertulis yang kokoh agar tidak dianggap sebagai anomali kode biasa.

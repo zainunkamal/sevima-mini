@@ -125,3 +125,45 @@
 - **Plan:** Menyusun solusi arsitektural untuk 4 isu kritis tanpa menambah kelas di luar requirement 10 kelas awal.
 - **Act:** Meminta AI mengaplikasikan solusi perbaikan 1–4, meregenerasi screenshot bukti visual Versi 4, dan melakukan commit final.
 - **Reflect:** Siklus evaluasi kritis berbasis risiko (*risk-driven refinement*) menghasilkan rancangan arsitektur yang tidak hanya patuh pada sintaks OOP, tetapi juga kokoh secara logika domain operasional.
+
+---
+
+## AI Usage Log: Minggu 2
+
+### Prompt #1 (versi: Use Case Diagram V1)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Merancang Use Case Diagram formal UML 2.5 untuk sistem informasi akademik "SEVIMA Mini" dengan batasan 4 aktor, 10 use case, serta penentuan relasi `<<include>>` dan `<<extend>>` yang tepat.
+- **Prompt:**
+  ```text
+  Anda adalah analis sistem dan arsitek OOP senior.
+
+  Konteks: sistem informasi akademik "SEVIMA Mini".
+
+  Buat use case diagram dengan:
+  - Aktor: Mahasiswa, Dosen (PA), Admin Akademik, Sistem PMB.
+  - Use case: Daftar sebagai Calon Mahasiswa, Verifikasi Berkas, Isi KRS,
+    Cek Prasyarat, Approve KRS, Ajukan Revisi KRS, Input Nilai,
+    Generate Transkrip, Bayar SPP, Bayar Denda Keterlambatan.
+  - Tandai <<include>> dan <<extend>> yang benar:
+    include = langkah wajib (panah dari use case dasar ke yang di-include);
+    extend = tambahan bersyarat (panah dari use case tambahan ke use case dasar).
+  - Semua use case di dalam system boundary "SEVIMA Mini"; aktor di luar.
+  - Nama use case: kata kerja + objek, dari sudut pandang pengguna.
+
+  Format output: kode PlantUML dalam satu code block (Mermaid tidak punya
+  tipe use case bawaan). Setelah itu, jelaskan singkat alasan setiap
+  relasi include dan extend.
+  ```
+- **Output ringkas:** Kode PlantUML tersimpan di [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml), spesifikasi lengkap di [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md), dan bukti visual di [use_case_versi_1.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02/use_case_versi_1.png).
+- **Keputusan Arsitektur Utama:**
+  1. `(Isi KRS) ..> (Cek Prasyarat) : <<include>>`: Langkah validasi wajib internal.
+  2. `(Bayar Denda Keterlambatan) ..> (Bayar SPP) : <<extend>>`: Perluasan bersyarat jika melewati jatuh tempo.
+  3. `(Ajukan Revisi KRS) ..> (Isi KRS) : <<extend>>`: Percabangan kondisional jika ditolak Dosen PA atau masa KPRS.
+  4. Pemisahan domain pembayaran SPP dan pendaftaran PMB dari dependensi sinkron use case.
+- **Commit terkait:** `28d7e3f` - `feat: add use case diagram (version 1) and screenshot evidence` [AI-assisted]
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Standar UML 2.5 membedakan secara tegas langkah wajib (`<<include>>`) yang selalu dieksekusi dari use case dasar, dengan cabang alternatif/bersyarat (`<<extend>>`) yang mengarah balik ke use case dasar saat kondisi tertentu terpenuhi.
+- **Plan:** Menyusun arsitektur use case dengan memisahkan boundary sistem, memetakan aktor manusia vs sistem eksternal, dan menerapkan relasi include/extend secara presisi tanpa anti-pattern.
+- **Act:** Meng-generate kode PlantUML, merender artefak gambar PNG, menyimpannya ke `diagram/` dan `perbaikan/minggu-02/`, serta memperbarui dokumentasi proyek.
+- **Reflect:** Kejelasan batasan tanggung jawab aktor (*boundaries of concern*) dan pemisahan prakondisi waktu (*temporal separation*) sangat penting agar Use Case Diagram mencerminkan interaksi pengguna nyata dan bukan sekadar diagram alir proses (flowchart).

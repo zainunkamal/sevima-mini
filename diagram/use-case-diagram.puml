@@ -1,0 +1,71 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam monochrome false
+left to right direction
+
+' ========================================================
+' DEFINISI AKTOR (Di Luar System Boundary)
+' ========================================================
+actor "Mahasiswa" as mhs
+actor "Dosen (PA)" as dosen
+actor "Admin Akademik" as admin
+actor "Sistem PMB" as pmb <<System>>
+
+' ========================================================
+' SYSTEM BOUNDARY: SEVIMA Mini
+' ========================================================
+rectangle "SEVIMA Mini" {
+
+    ' --- Modul Registrasi & Penerimaan ---
+    usecase "Daftar sebagai Calon Mahasiswa" as UC_Daftar
+    usecase "Verifikasi Berkas" as UC_Verifikasi
+
+    ' --- Modul Keuangan Mahasiswa ---
+    usecase "Bayar SPP" as UC_BayarSPP
+    usecase "Bayar Denda Keterlambatan" as UC_BayarDenda
+
+    ' --- Modul Rencana Studi (KRS) ---
+    usecase "Isi KRS" as UC_IsiKRS
+    usecase "Cek Prasyarat" as UC_CekPrasyarat
+    usecase "Ajukan Revisi KRS" as UC_AjukanRevisi
+    usecase "Approve KRS" as UC_ApproveKRS
+
+    ' --- Modul Penilaian & Rekam Akademik ---
+    usecase "Input Nilai" as UC_InputNilai
+    usecase "Generate Transkrip" as UC_GenerateTranskrip
+
+    ' ====================================================
+    ' RELASI ANTAR USE CASE (include & extend)
+    ' ====================================================
+
+    ' Relasi <<include>>: Langkah wajib internal
+    UC_IsiKRS ..> UC_CekPrasyarat : <<include>>
+
+    ' Relasi <<extend>>: Percabangan / langkah tambahan bersyarat
+    UC_BayarDenda ..> UC_BayarSPP : <<extend>>\n[lewat jatuh tempo]
+    UC_AjukanRevisi ..> UC_IsiKRS : <<extend>>\n[ditolak PA / masa KPRS]
+}
+
+' ========================================================
+' ASOSIASI AKTOR KE USE CASE
+' ========================================================
+
+' Sistem PMB (Sistem Eksternal)
+pmb --> UC_Daftar
+
+' Admin Akademik
+admin --> UC_Verifikasi
+admin --> UC_GenerateTranskrip
+
+' Mahasiswa
+mhs --> UC_BayarSPP
+mhs --> UC_IsiKRS
+mhs --> UC_AjukanRevisi
+mhs --> UC_GenerateTranskrip
+
+' Dosen (PA)
+dosen --> UC_ApproveKRS
+dosen --> UC_InputNilai
+
+@enduml

@@ -7,7 +7,7 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 ## Struktur Folder Perbaikan
 
 - [minggu-01/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-01): Berisi seluruh artefak tangkapan layar (*screenshot*) bukti visual evolusi class diagram Versi 1 hingga Versi 4.
-- [minggu-02/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02): Disiapkan untuk dokumentasi dan artefak iterasi evaluasi tahap berikutnya.
+- [minggu-02/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02): Berisi artefak visual Use Case Diagram SEVIMA Mini (Versi 1) dan perbaikan berikutnya.
 
 ---
 
@@ -71,6 +71,22 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 ---
 
+## Minggu 2: Perancangan Use Case Diagram (Versi 1)
+
+### 1. Versi 1: Perancangan Standar Formal UML 2.5
+![Versi 1 - Use Case Diagram](minggu-02/use_case_versi_1.png)
+
+- **Karakteristik & Implementasi:**
+  - **4 Aktor:** `Mahasiswa`, `Dosen (PA)`, `Admin Akademik` (Aktor Manusia), dan `Sistem PMB` (Aktor Sistem Eksternal `<<System>>`).
+  - **10 Use Case:** Terangkum utuh di dalam boundary *"SEVIMA Mini"* dengan konvensi penamaan *kata kerja + objek* dari perspektif pengguna.
+  - **Relasi `<<include>>`:** `(Isi KRS) ..> (Cek Prasyarat) : <<include>>` (langkah wajib internal sistem untuk validasi kelulusan matkul prasyarat, batas 24 SKS, dan pencegahan jadwal bentrok).
+  - **Relasi `<<extend>>`:**
+    - `(Bayar Denda Keterlambatan) ..> (Bayar SPP) : <<extend>>` dengan extension point `[lewat jatuh tempo]`.
+    - `(Ajukan Revisi KRS) ..> (Isi KRS) : <<extend>>` dengan extension point `[ditolak PA / masa KPRS]`.
+- **Berkas Model:** [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
+
+---
+
 ## Tabel Komparasi Riwayat Versi
 
 | Evaluasi Arsitektural | Versi 1 | Versi 2 | Versi 3 | Versi 4 (Final Refactor) |
@@ -86,7 +102,8 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 ## Berkas Terkait
 
-- Kode Mermaid Versi 4: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd)
-- Spesifikasi Teknis & Aturan Bisnis: [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
+- Use Case Diagram (Versi 1): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
+- Kode Mermaid Class Diagram Versi 4: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd)
+- Spesifikasi Teknis & Aturan Bisnis Class Diagram: [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 - Dokumen Keputusan Arsitektur: [ADR-001.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf)
 - Catatan Transparansi AI: [ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md)

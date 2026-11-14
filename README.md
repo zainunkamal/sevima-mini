@@ -47,15 +47,19 @@ sevima-mini/
 ├── README.md                     # Dokumentasi utama proyek
 ├── diagram/                      # Artefak kode diagram dan spesifikasi teknis
 │   ├── class-diagram.mmd         # Kode sumber Mermaid class diagram (Versi 4)
-│   └── class-diagram.md          # Spesifikasi rinci atribut, method, relasi, dan aturan bisnis
+│   ├── class-diagram.md          # Spesifikasi rinci atribut, method, relasi, dan aturan bisnis
+│   ├── use-case-diagram.puml     # Kode sumber PlantUML Use Case Diagram (Versi 1)
+│   └── use-case-diagram.md       # Spesifikasi formal use case, aktor, dan relasi include/extend
 ├── perbaikan/                    # Riwayat perbaikan dan bukti visual evolusi diagram
 │   ├── README.md                 # Dokumentasi komparasi perubahan antar versi
-│   ├── minggu-01/                # Bukti visual tangkapan layar evolusi Minggu 1
+│   ├── minggu-01/                # Bukti visual evolusi Class Diagram Minggu 1 (Versi 1-4)
 │   │   ├── diagram_sebelum_dirubah.png  # Versi 1 (Draft awal AI)
 │   │   ├── diagram_sesudah_dirubah.png  # Versi 2 (Enkapsulasi penuh & hitungIPK)
 │   │   ├── diagram_versi_3.png          # Versi 3 (Refactoring relasi & kardinalitas)
 │   │   └── diagram_versi_4.png          # Versi 4 (Perbaikan arsitektur kritis 1-4)
-│   └── minggu-02/                # Direktori persiapan iterasi evaluasi berikutnya
+│   └── minggu-02/                # Bukti visual Use Case Diagram Minggu 2
+│       ├── diagram_versi_1.png          # Screenshot Use Case Diagram Versi 1
+│       └── use_case_versi_1.png         # Artefak gambar render diagram
 ├── documents/                    # Dokumen keputusan arsitektural (ADR)
 │   └── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
 └── logs/                         # Catatan transparansi penggunaan AI

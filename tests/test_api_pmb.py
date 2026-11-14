@@ -1,18 +1,46 @@
+import os
 import unittest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, SessionLocal, engine
+from app.database import Base, get_db
 from app.main import app
 from app.models.pmb import JalurMasuk, ProgramStudi
+
+TEST_API_DB_PATH = "./test_api_pmb.db"
+test_api_engine = create_engine(
+    f"sqlite:///{TEST_API_DB_PATH}",
+    connect_args={"check_same_thread": False},
+)
+
+@event.listens_for(test_api_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON;")
+    cursor.close()
+
+TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_api_engine)
+
+
+def override_get_db():
+    db = TestSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 class TestPMBRegisterAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
+        # Override dependency get_db agar tes menggunakan database terisolasi
+        Base.metadata.drop_all(bind=test_api_engine)
+        Base.metadata.create_all(bind=test_api_engine)
 
-        db = SessionLocal()
+        app.dependency_overrides[get_db] = override_get_db
+
+        db = TestSessionLocal()
         prodi = ProgramStudi(kode="TIF", nama="Teknik Informatika", fakultas="FTI")
         jalur = JalurMasuk(nama="SNBT")
         db.add_all([prodi, jalur])
@@ -20,6 +48,14 @@ class TestPMBRegisterAPI(unittest.TestCase):
         db.close()
 
         cls.client = TestClient(app)
+
+    @classmethod
+    def tearDownClass(cls):
+        app.dependency_overrides.clear()
+        Base.metadata.drop_all(bind=test_api_engine)
+        test_api_engine.dispose()
+        if os.path.exists(TEST_API_DB_PATH):
+            os.remove(TEST_API_DB_PATH)
 
     def test_01_register_success(self):
         """Memastikan pendaftaran berhasil menghasilkan status 201 dan menyembunyikan data sensitif."""

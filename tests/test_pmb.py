@@ -3,20 +3,40 @@ import unittest
 from datetime import date
 
 import sqlalchemy as sa
+from sqlalchemy import create_engine, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base, engine, set_sqlite_pragma
+from app.database import Base
 from app.models.pmb import CalonMahasiswa, JalurMasuk, ProgramStudi, StatusPMB
+
+TEST_DB_PATH = "./test_pmb_models.db"
+test_engine = create_engine(
+    f"sqlite:///{TEST_DB_PATH}",
+    connect_args={"check_same_thread": False},
+)
+
+@event.listens_for(test_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON;")
+    cursor.close()
 
 
 class TestPMBModels(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # Menggunakan koneksi database aktif
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
-        cls.Session = sessionmaker(bind=engine)
+        # Gunakan database pengujian terisolasi agar tidak menghapus database utama
+        Base.metadata.drop_all(bind=test_engine)
+        Base.metadata.create_all(bind=test_engine)
+        cls.Session = sessionmaker(bind=test_engine)
+
+    @classmethod
+    def tearDownClass(cls):
+        Base.metadata.drop_all(bind=test_engine)
+        test_engine.dispose()
+        if os.path.exists(TEST_DB_PATH):
+            os.remove(TEST_DB_PATH)
 
     def setUp(self):
         self.session = self.Session()

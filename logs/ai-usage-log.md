@@ -483,7 +483,7 @@
   1. **Eliminasi Error Masking:** Menghilangkan asumsi salah bahwa setiap `IntegrityError` pasti berasal dari email ganda. Pengecekan spesifik pada string origin driver basis data memastikan pelanggaran foreign key atau check constraint tetap dikembalikan dengan kode dan konteks yang tepat.
   2. **Konsistensi Modern Python Stack:** Seluruh query di service layer kini patuh pada standar SQLAlchemy 2.0 (`select` statement).
   3. **Penyempurnaan Validasi Domain:** Mencegah anomali tanggal lahir di masa depan atau usia di luar rentang perkuliahan wajar secara deklaratif di lapisan Pydantic DTO.
-- **Commit terkait:** `pending` - `feat(api): implement security hardening and SQLAlchemy 2 query refactoring [AI-Assisted]`
+- **Commit terkait:** `641baca` - `feat(api): implement security hardening and SQLAlchemy 2 query refactoring [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Audit teknis mengungkap celah di mana *catch-all IntegrityError* menyamarkan kegagalan constraint lain sebagai error email duplikat, dan query masih memakai gaya hybrid SQLAlchemy 1.x.

@@ -654,7 +654,7 @@
   2. **True Idempotency:** Memanggil approve berulang kali pada calon yang sudah approved tidak akan mengonsumsi nomor urut NIM baru dari database counter (`last_number` tidak bertambah), melainkan langsung mengembalikan data dan NIM eksisting dengan HTTP 200 OK.
   3. **Integritas Format Kode Prodi:** Penegakan bahwa kode prodi wajib terdiri dari 3 digit angka (`isdigit()` dan `len == 3`) mencegah terbitnya NIM berformat salah atau tercampur huruf saat registrasi disetujui.
   4. **Pemisahan Peran Arsitektural (Separation of Concerns):** Seluruh aturan transisi dan transaksi diisolasi di dalam `PMBService`, menjaga router tetap deklaratif dan ramping.
-- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `feat(pmb): implement state machine PUT approve and reject endpoints with idempotency and thin router [AI-Assisted]`
+- **Commit terkait:** `45e90b4` - `feat(pmb): implement state machine PUT approve and reject endpoints with idempotency and thin router [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Siklus hidup pendaftaran rentan terhadap inkonsistensi data jika transisi status tidak memiliki aturan terminal yang tegas (misal terjadi pergantian bolak-balik antara approved dan rejected) atau jika operasi approval berulang menyebabkan pemborosan nomor urut NIM akibat generator yang terus dipanggil tanpa proteksi idempotensi.

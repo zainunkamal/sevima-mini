@@ -303,3 +303,38 @@
 - **Plan:** Memecah tanggung jawab ke service modular berbasis modul akademik, mendefinisikan antarmuka peran ramping, serta menerapkan pola Strategy dan Inversion of Control.
 - **Act:** Mengimplementasikan Class Diagram Versi 6 dalam Mermaid, merender screenshot beresolusi tinggi (700 KB), memperbarui spesifikasi teknis dan dokumentasi perbaikan.
 - **Reflect:** Penerapan prinsip SOLID secara ketat mengubah arsitektur monolitik prosedural menjadi sistem berorientasi objek yang fleksibel (*extensible*), mudah diuji (*testable*), dan siap diadopsi dalam skala produksi.
+
+---
+
+### Prompt #6 (versi: V7 - Integrasi Design Patterns: Factory, Observer, Strategy)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Mengintegrasikan tiga pola desain (*GoF Design Patterns*) secukupnya tanpa menambah kelas yang tidak perlu: Factory Pattern (`UserFactory` dengan invarian mutlak mahasiswa wajib ber-NIM), Observer Pattern (`KRSSubscriber` & `KRSManager`), dan Strategy Pattern (`ValidationRule` beserta 3 aturan konkret yang diagregasi oleh `KRSValidator`).
+- **Prompt:**
+  ```text
+  Pada class diagram saya.
+
+  Tambahkan tiga pattern secukupnya, tanpa menambah kelas yang tidak perlu:
+  1. Factory: UserFactory yang membuat Mahasiswa, Dosen, Admin, dan
+     CalonMahasiswa (Mahasiswa selalu punya NIM).
+  2. Observer: KRSManager mengumumkan event perubahan status KRS;
+     Mahasiswa, Dosen PA, dan bagian akademik adalah subscriber.
+  3. Strategy: interface ValidationRule dengan implementasi
+     CekPrasyaratRule, CekBatasSKSRule, CekJadwalBentrokRule, sehingga
+     aturan baru (mis. CekTunggakanRule) bisa ditambah tanpa mengubah
+     KRSValidator (Open/Closed).
+
+  Output: Mermaid classDiagram yang diperbarui + penjelasan singkat
+  manfaat tiap pattern di sistem ini.
+  ```
+- **Output ringkas:** Kode sumber Mermaid Versi 7 pada [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd), dokumentasi teknis lengkap di [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md), dokumentasi evolusi di [perbaikan/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/README.md), sinkronisasi [README.md](file:///home/zainun/git/istn/sevima-mini/README.md), serta artefak visual [class_diagram_versi_7.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02/class_diagram_versi_7.png) dan [class_diagram_design_patterns.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02/class_diagram_design_patterns.png).
+- **Keputusan Arsitektur Utama:**
+  1. **Factory Pattern (`UserFactory`):** Memusatkan instansiasi turunan `User`. Mengunci invarian bisnis bahwa `createMahasiswa(...)` wajib menerima parameter `nim`, sehingga mustahil menciptakan objek `Mahasiswa` berstatus *invalid* (tanpa NIM) di dalam memori sistem.
+  2. **Observer Pattern (`KRSSubscriber` & `KRSManager`):** `KRSManager` mempublikasikan event `onStatusKRSChanged` kepada seluruh observer (`Mahasiswa`, `Dosen`, `Admin`) yang mengimplementasikan `KRSSubscriber`. Mengeliminasi *tight coupling* antara alur persetujuan KRS dan subsistem notifikasi pihak berkepentingan.
+  3. **Strategy Pattern (`ValidationRule` & `KRSValidator`):** `KRSValidator` bertindak sebagai *Rule Engine* independen yang mengeksekusi daftar `ValidationRule` (`CekPrasyaratRule`, `CekBatasSKSRule`, `CekJadwalBentrokRule`). Penambahan aturan bisnis baru (misal `CekTunggakanRule`) dapat dilakukan secara *plug-and-play* tanpa memodifikasi kode inti `KRSValidator` (*Open/Closed Principle*).
+- **Commit terkait:** `02a4050` - `feat: integrate Factory, Observer, and Strategy design patterns into class diagram (version 7)` [AI-assisted]
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Meskipun sistem sudah menerapkan modularitas SOLID, proses kreasi user rawan inkonsistensi status (mahasiswa tanpa NIM), notifikasi perubahan status KRS berpotensi menimbulkan kopling langsung, dan penambahan aturan validasi KRS berisiko memodifikasi validator yang sudah stabil.
+- **Plan:** Menyelaraskan arsitektur dengan 3 GoF pattern secara proporsional (*lean*): Factory untuk integritas data user, Observer untuk *loose-coupling* event KRS, dan Strategy untuk ekstensibilitas aturan validasi tanpa kelas berlebih.
+- **Act:** Mengintegrasikan struktur kelas ke Mermaid, memperbarui dokumentasi teknis, menghasilkan rendering gambar resolusi tinggi melalui Kroki, serta mencatat riwayat pembaruan ke README dan log AI.
+- **Reflect:** Desain pola (*design patterns*) yang diterapkan secara tepat sasaran mampu meningkatkan fleksibilitas dan ketahanan sistem tanpa menciptakan *over-engineering* atau kompleksitas yang tidak perlu.

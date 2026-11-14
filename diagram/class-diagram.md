@@ -1,56 +1,56 @@
-# Class Diagram UML - SEVIMA Mini (Versi 6: Refactor Arsitektur SOLID)
+# Class Diagram UML - SEVIMA Mini (Versi 7: Integrasi Design Patterns)
 
-Diagram kelas UML sistem informasi akademik kampus kecil **SEVIMA Mini** yang telah direfaktor secara penuh untuk mematuhi prinsip **SOLID**, khususnya **Single Responsibility Principle (SRP)** dan **Dependency Inversion Principle (DIP)**.
-
----
-
-## 📌 Bukti Visual Diagram (Versi 6)
-
-![Class Diagram Versi 6 - Refactor SOLID](../perbaikan/minggu-02/class_diagram_versi_6.png)
+Diagram kelas UML sistem informasi akademik kampus kecil **SEVIMA Mini** yang telah dilengkapi tiga pola desain (*GoF Design Patterns*) fundamental: **Factory Method**, **Observer**, dan **Strategy** tanpa penambahan kelas berlebih.
 
 ---
 
-## 🛠️ Kode Sumber Mermaid (Versi 6)
+## 📌 Bukti Visual Diagram (Versi 7)
+
+![Class Diagram Versi 7 - Integrasi Design Patterns](../perbaikan/minggu-02/class_diagram_versi_7.png)
+
+---
+
+## 🛠️ Kode Sumber Mermaid (Versi 7)
 
 Kode sumber tersimpan di [class-diagram.mmd](class-diagram.mmd):
 
 ```mermaid
 classDiagram
     %% ==========================================
-    %% 1. ROLE-BASED INTERFACES (ISP & DIP)
+    %% PATTERN 2: OBSERVER INTERFACE (Subscriber)
     %% ==========================================
-    class PengisiKRS {
+    class KRSSubscriber {
         <<interface>>
-        +getNim() String
-        +getSemester() int
-        +getDaftarMatkulLulus() String[]
+        +onStatusKRSChanged(String krsId, String statusBaru, String pesan) void
     }
 
-    class PenyetujuKRS {
-        <<interface>>
-        +getNidn() String
-        +verifikasiRencanaStudi(String krsId, boolean disetujui) boolean
-    }
-
-    class Penilai {
-        <<interface>>
-        +getNidn() String
-        +inputNilaiMahasiswa(String enrollmentId, float nilaiAngka) boolean
-    }
-
+    %% ==========================================
+    %% PATTERN 3: STRATEGY INTERFACE & RULES
+    %% ==========================================
     class ValidationRule {
         <<interface>>
         +validate(String mahasiswaId, String[] daftarMatkul) boolean
         +getErrorMessage() String
     }
 
-    class NotificationChannel {
-        <<interface>>
-        +send(String recipient, String message) boolean
+    class CekPrasyaratRule {
+        +validate(String mahasiswaId, String[] daftarMatkul) boolean
+        +getErrorMessage() String
+    }
+
+    class CekBatasSKSRule {
+        -int batasMaksimalSKS
+        +validate(String mahasiswaId, String[] daftarMatkul) boolean
+        +getErrorMessage() String
+    }
+
+    class CekJadwalBentrokRule {
+        +validate(String mahasiswaId, String[] daftarMatkul) boolean
+        +getErrorMessage() String
     }
 
     %% ==========================================
-    %% 2. DOMAIN ENTITIES (POCO / High Cohesion)
+    %% CORE ENTITIES & OBSERVER IMPLEMENTATIONS
     %% ==========================================
     class User {
         <<abstract>>
@@ -75,19 +75,24 @@ classDiagram
         +getProgramStudi() String
         +getSemester() int
         +getDaftarMatkulLulus() String[]
+        +onStatusKRSChanged(String krsId, String statusBaru, String pesan) void
     }
 
     class Dosen {
         -String nidn
         +getNidn() String
-        +verifikasiRencanaStudi(String krsId, boolean disetujui) boolean
-        +inputNilaiMahasiswa(String enrollmentId, float nilaiAngka) boolean
+        +lihatJadwalMengajar() void
+        +verifikasiKRS(Enrollment enrollment) void
+        +inputNilai(Enrollment enrollment, float nilaiAngka) void
+        +onStatusKRSChanged(String krsId, String statusBaru, String pesan) void
     }
 
     class Admin {
         -String staffId
         +getStaffId() String
         +kelolaAkunUser(User user) void
+        +validasiPembayaran(Payment payment) void
+        +onStatusKRSChanged(String krsId, String statusBaru, String pesan) void
     }
 
     class CalonMahasiswa {
@@ -95,7 +100,9 @@ classDiagram
         -String statusSeleksi
         +getNomorPendaftaran() String
         +getStatusSeleksi() String
-        +setStatusSeleksi(String status) void
+        +daftarSeleksi() void
+        +lihatPengumuman() String
+        +konversiKeMahasiswa(String nimBaru, String prodi) Mahasiswa
     }
 
     class Course {
@@ -115,6 +122,7 @@ classDiagram
         +getTahunAkademik() String
         +getStatus() String
         +setStatus(String status) void
+        +getSks() int
     }
 
     class Schedule {
@@ -144,122 +152,59 @@ classDiagram
         +getJumlah() double
         +getStatus() String
         +setStatus(String status) void
-    }
-
-    class Attendance {
-        -String tanggal
-        -String statusKehadiran
-        +getTanggal() String
-        +getStatusKehadiran() String
-        +setStatusKehadiran(String status) void
+        +prosesPembayaran() void
     }
 
     %% ==========================================
-    %% 3. CONCRETE VALIDATION RULES (Strategy)
+    %% PATTERN 1: FACTORY
     %% ==========================================
-    class PrerequisiteRule {
-        +validate(String mahasiswaId, String[] daftarMatkul) boolean
-        +getErrorMessage() String
-    }
-
-    class MaxCreditRule {
-        -int batasSKS
-        +validate(String mahasiswaId, String[] daftarMatkul) boolean
-        +getErrorMessage() String
-    }
-
-    class ScheduleConflictRule {
-        +validate(String mahasiswaId, String[] daftarMatkul) boolean
-        +getErrorMessage() String
+    class UserFactory {
+        +createMahasiswa(String id, String username, String email, String nim, String prodi) Mahasiswa
+        +createDosen(String id, String username, String email, String nidn) Dosen
+        +createAdmin(String id, String username, String email, String staffId) Admin
+        +createCalonMahasiswa(String id, String username, String email, String nomorPendaftaran) CalonMahasiswa
     }
 
     %% ==========================================
-    %% 4. CONCRETE NOTIFICATION CHANNELS
+    %% OBSERVER SUBJECT & STRATEGY CONTEXT
     %% ==========================================
-    class EmailChannel {
-        +send(String recipient, String message) boolean
-    }
-
-    class PushNotificationChannel {
-        +send(String recipient, String message) boolean
-    }
-
-    %% ==========================================
-    %% 5. MODULAR SERVICES (SRP per Modul)
-    %% ==========================================
-    class PMBService {
-        -NotificationService notifier
-        +daftar(String dataDiri, Object berkas) String
-        +verifikasiBerkas(String noPendaftaran) boolean
-        +nyatakanLulus(String noPendaftaran, String prodi) Mahasiswa
-    }
-
-    class KRSService {
-        -KRSValidator validator
-        -NotificationService notifier
-        +submitKRS(PengisiKRS mhs, String[] daftarMatkul) boolean
-        +ajukanRevisiKRS(PengisiKRS mhs, String[] daftarMatkul) boolean
-        +prosesPersetujuan(PenyetujuKRS dosen, String krsId, boolean disetujui) boolean
+    class KRSManager {
+        -List~KRSSubscriber~ subscribers
+        +attach(KRSSubscriber subscriber) void
+        +detach(KRSSubscriber subscriber) void
+        +notifySubscribers(String krsId, String status, String pesan) void
+        +submitKRS(String mahasiswaId, String[] daftarMatkul) boolean
+        +ajukanRevisiKRS(String mahasiswaId, String[] daftarMatkul) boolean
+        +approveKRS(String krsId, String dosenId, boolean disetujui) boolean
     }
 
     class KRSValidator {
-        -ValidationRule[] rules
-        +registerRule(ValidationRule rule) void
+        -List~ValidationRule~ rules
+        +tambahRule(ValidationRule rule) void
+        +hapusRule(ValidationRule rule) void
         +validateAll(String mahasiswaId, String[] daftarMatkul) boolean
         +getErrors() List
     }
 
-    class JadwalService {
-        +buatJadwal(Course course, Schedule schedule, Dosen pengajar) boolean
-        +cekBentrok(Schedule s1, Schedule s2) boolean
-        +getJadwalMahasiswa(String nim) List
-        +getJadwalDosen(String nidn) List
-    }
-
-    class NilaiService {
-        +inputNilai(Penilai dosen, String enrollmentId, float nilaiAngka) boolean
-        +hitungNilaiHuruf(float nilaiAngka) String
-        +hitungIPK(String nim) double
-        +generateTranskrip(String nim) Object
-    }
-
-    class KeuanganService {
-        +buatTagihanSPP(String nim, int semester, double nominal) Payment
-        +prosesPembayaran(String paymentId, double jumlahBayar) boolean
-        +hitungDenda(String paymentId) double
-        +validasiStatusLunas(String nim, int semester) boolean
-    }
-
-    class PresensiService {
-        +catatKehadiran(String enrollmentId, Attendance attendance) boolean
-        +hitungPersentaseKehadiran(String enrollmentId) double
-    }
-
-    class NotificationService {
-        -NotificationChannel channel
-        +setChannel(NotificationChannel channel) void
-        +kirimNotifikasi(String penerima, String pesan) boolean
-    }
-
     %% ==========================================
-    %% 6. RELASI, IMPLEMENTASI, & INJEKSI
+    %% INHERITANCE & IMPLEMENTATIONS
     %% ==========================================
     User <|-- Mahasiswa
     User <|-- Dosen
     User <|-- Admin
     User <|-- CalonMahasiswa
 
-    PengisiKRS <|.. Mahasiswa
-    PenyetujuKRS <|.. Dosen
-    Penilai <|.. Dosen
+    KRSSubscriber <|.. Mahasiswa
+    KRSSubscriber <|.. Dosen
+    KRSSubscriber <|.. Admin
 
-    ValidationRule <|.. PrerequisiteRule
-    ValidationRule <|.. MaxCreditRule
-    ValidationRule <|.. ScheduleConflictRule
+    ValidationRule <|.. CekPrasyaratRule
+    ValidationRule <|.. CekBatasSKSRule
+    ValidationRule <|.. CekJadwalBentrokRule
 
-    NotificationChannel <|.. EmailChannel
-    NotificationChannel <|.. PushNotificationChannel
-
+    %% ==========================================
+    %% ASSOCIATIONS & DEPENDENCIES
+    %% ==========================================
     Mahasiswa "1" *-- "0..*" Enrollment : memiliki
     Enrollment "1" *-- "0..1" Grade : memiliki
     Mahasiswa "1" *-- "0..*" Payment : memiliki
@@ -268,35 +213,31 @@ classDiagram
     Schedule "1" --> "0..*" Enrollment : diikuti
     Dosen "1" --> "0..*" Schedule : mengajar
     Course "0..*" --> "0..*" Course : prasyarat
-    Enrollment "1" *-- "0..*" Attendance : mencatat
+    CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai
 
-    KRSService --> KRSValidator : delegasi validasi
-    KRSService --> NotificationService : memicu notifikasi
-    KRSService ..> PengisiKRS : depends on role interface
-    KRSService ..> PenyetujuKRS : depends on role interface
-    KRSValidator o--> ValidationRule : agregasi aturan validasi (DIP)
+    UserFactory ..> Mahasiswa : instantiates (wajib NIM)
+    UserFactory ..> Dosen : instantiates
+    UserFactory ..> Admin : instantiates
+    UserFactory ..> CalonMahasiswa : instantiates
 
-    NilaiService ..> Penilai : depends on role interface
-    NotificationService o--> NotificationChannel : injeksi kanal (DIP)
-    PMBService --> NotificationService : memicu notifikasi
-    KeuanganService ..> Payment : mengelola tagihan
-    JadwalService ..> Schedule : mengelola sesi
-    PresensiService ..> Attendance : mengelola kehadiran
+    KRSManager o--> KRSSubscriber : mengumumkan status
+    KRSManager --> KRSValidator : delegasi validasi
+    KRSValidator o--> ValidationRule : mengagregasi aturan (Strategy)
 ```
 
 ---
 
-## 🏛️ Penjelasan Refaktorisasi Arsitektur SOLID
+## 🏛️ Spesifikasi 3 Pola Desain (*Design Patterns*)
 
-1. **Eliminasi God Object `Admin` & Pemisahan Service per Modul (SRP):**
-   - Menghapus method lintas modul pada `Admin`. Layanan dipartisi menjadi `PMBService`, `KRSService`, `JadwalService`, `NilaiService`, `KeuanganService`, `PresensiService`, dan `NotificationService`.
-2. **Pemisahan Peran dengan Antarmuka Ramping (ISP & DIP):**
-   - Kelas `Mahasiswa` mengimplementasikan `PengisiKRS`.
-   - Kelas `Dosen` mengimplementasikan `PenyetujuKRS` dan `Penilai`.
-   - Modul service tidak lagi terikat pada kelas konkret melainkan pada kontrak interface.
-3. **Pola Strategy Rule Object (`ValidationRule` - OCP & DIP):**
-   - Logika validasi KRS dipecah menjadi `PrerequisiteRule`, `MaxCreditRule`, dan `ScheduleConflictRule`. `KRSValidator` bertindak sebagai *engine* yang dapat diperluas (*extensible*) tanpa modifikasi kode.
-4. **Abstraksi Saluran Komunikasi (`NotificationChannel` - DIP & OCP):**
-   - `NotificationService` menginjeksi `NotificationChannel` (`EmailChannel`, `PushNotificationChannel`), memudahkan penggantian kanal komunikasi tanpa mengubah alur notifikasi.
-5. **Entitas Domain Bersih (*Clean POCO / High Cohesion*):**
-   - Menghapus logika operasional dari objek `Mahasiswa`, `Course`, `Enrollment`, dan `Payment`. Entitas fokus menyimpan state dan data domain.
+### 1. Factory Pattern (`UserFactory`)
+- **Tanggung Jawab:** Memusatkan logika instansiasi seluruh turunan `User` (`Mahasiswa`, `Dosen`, `Admin`, `CalonMahasiswa`).
+- **Invarian Bisnis:** Memastikan objek `Mahasiswa` **selalu dibuat dengan menyertakan NIM valid** sejak pertama kali diinstansiasi (`createMahasiswa(..., nim, ...)`), mencegah instansiasi mahasiswa tanpa identitas akademik resmi.
+
+### 2. Observer Pattern (`KRSSubscriber` & `KRSManager`)
+- **Subject / Publisher (`KRSManager`):** Mengelola daftar observer dan memicu `notifySubscribers()` saat status pengajuan KRS mengalami transisi (`pending approval`, `disetujui`, `ditolak_perlu_revisi`).
+- **Observer / Subscriber (`KRSSubscriber`):** Diimplementasikan oleh `Mahasiswa` (pemilik KRS), `Dosen` (Dosen PA), dan `Admin` (bagian akademik), memungkinkan pembaruan status terkirim secara otomatis dengan kopling longgar (*loose coupling*).
+
+### 3. Strategy Pattern (`ValidationRule` & `KRSValidator`)
+- **Strategy Interface (`ValidationRule`):** Menstandarkan kontrak validasi dengan method `validate(mahasiswaId, daftarMatkul): boolean` dan `getErrorMessage(): String`.
+- **Concrete Strategies:** `CekPrasyaratRule` (kelulusan mata kuliah prasyarat), `CekBatasSKSRule` (beban maksimal 24 SKS), dan `CekJadwalBentrokRule` (bentrok jam/ruangan kelas).
+- **Kepatuhan Open/Closed Principle (OCP):** Aturan baru seperti **`CekTunggakanRule`** dapat ditambahkan ke `KRSValidator` tanpa mengubah kode yang sudah ada.

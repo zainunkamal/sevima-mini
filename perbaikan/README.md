@@ -75,13 +75,12 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan temuan evaluasi konsistensi, dengan mengadopsi **Opsi A (Layered / Clean Architecture)** dan melengkapi sequence diagram sehingga **100% dari 10 Use Case memiliki pemodelan alur dinamis**.
 
-### 1. Class Diagram Versi 6 (Refactor Arsitektur SOLID Penuh)
-![Class Diagram Versi 6](minggu-02/class_diagram_versi_6.png)
+### 1. Class Diagram Versi 7 (Integrasi Tiga GoF Design Patterns: Factory, Observer, Strategy)
+![Class Diagram Versi 7](minggu-02/class_diagram_versi_7.png)
 - **Pembaruan:**
-  - **Eliminasi God Object `Admin` & `Mahasiswa` (SRP):** Logika operasional didelegasikan ke service modular: `PMBService`, `KRSService`, `JadwalService`, `NilaiService`, `KeuanganService`, `PresensiService`, dan `NotificationService`.
-  - **Role Interfaces (ISP & DIP):** Pengenalan antarmuka peran `PengisiKRS`, `PenyetujuKRS`, dan `Penilai`.
-  - **Pola Strategy Rule Object (OCP & DIP):** Abstraksi `ValidationRule` (`PrerequisiteRule`, `MaxCreditRule`, `ScheduleConflictRule`) diinjeksi ke `KRSValidator`.
-  - **Abstraksi Notifikasi (DIP & OCP):** Abstraksi `NotificationChannel` (`EmailChannel`, `PushNotificationChannel`) diinjeksi ke `NotificationService`.
+  - **Factory Pattern (`UserFactory`):** Sentralisasi instansiasi seluruh turunan `User` (`Mahasiswa`, `Dosen`, `Admin`, `CalonMahasiswa`) dengan penegakan integritas bisnis bahwa `Mahasiswa` **wajib selalu memiliki NIM**.
+  - **Observer Pattern (`KRSSubscriber` & `KRSManager`):** `KRSManager` (Subject) mengumumkan event perubahan status KRS; `Mahasiswa`, `Dosen` (PA), dan `Admin` (bagian akademik) bertindak sebagai subscriber yang otomatis terbarui secara *loose-coupling*.
+  - **Strategy Pattern (`ValidationRule` & `KRSValidator`):** Abstraksi antarmuka `ValidationRule` dengan implementasi strategi konkret `CekPrasyaratRule`, `CekBatasSKSRule`, dan `CekJadwalBentrokRule`. Aturan baru seperti `CekTunggakanRule` dapat ditambahkan ke `KRSValidator` tanpa mengubah kode internal (*Open/Closed Principle*).
 - **Berkas Model:** [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 
 ### 2. Use Case Diagram (Versi 2)
@@ -120,14 +119,13 @@ Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan t
 
 ## Tabel Komparasi Riwayat Versi
 
-| Evaluasi Arsitektural | Versi 1 | Versi 2 | Versi 3 | Versi 4 (Final Refactor) | Versi 6 (Refactor SOLID) |
+| Evaluasi Arsitektural | Versi 1 | Versi 2 | Versi 3 | Versi 4 (Final Refactor) | Versi 7 (Design Patterns & SOLID) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Enkapsulasi Atribut** | `protected (#)` | `private (-)` | `private (-)` | `private (-)` | **`private (-)` ketat pada seluruh kelas** |
-| **Pemisahan Peran (SRP)**| God Object `Admin` & `Mahasiswa` | God Object | God Object | God Object | **Layanan spesifik per modul (`PMB`, `KRS`, `Jadwal`, `Nilai`, `Keuangan`, `Presensi`)** |
-| **Role Interface (ISP)** | Tidak ada | Tidak ada | Tidak ada | Tidak ada | **Interface peran ramping (`PengisiKRS`, `PenyetujuKRS`, `Penilai`)** |
-| **Validasi Bisnis (OCP/DIP)**| Hardcoded di entitas | Hardcoded di entitas | Hardcoded | Hardcoded | **Strategy Pattern via `ValidationRule` (`Prerequisite`, `Credit`, `Conflict`)** |
-| **Abstraksi Notifikasi (DIP)**| Tidak ada | Tidak ada | Tidak ada | Tidak ada | **Injeksi kanal `NotificationChannel` (`Email`, `Push`)** |
-| **Coupling Entitas** | Monolitik | Monolitik | Refactor relasi | Terputus via `String[]` | **Clean POCO / Entitas mandiri bebas logika operasional** |
+| **Pola Kreasi (Factory)** | Instansiasi langsung | Instansiasi langsung | Instansiasi | Transisi method | **`UserFactory`: Instansiasi terpusat & garansi Mahasiswa wajib ber-NIM** |
+| **Event Transaksi (Observer)**| Tidak ada | Tidak ada | Tidak ada | Tidak ada | **`KRSSubscriber`: Notifikasi otomatis status KRS ke Mahasiswa, Dosen PA, Admin** |
+| **Validasi Bisnis (Strategy)**| Hardcoded di entitas | Hardcoded di entitas | Hardcoded | Hardcoded | **`ValidationRule`: `CekPrasyarat`, `CekBatasSKS`, `CekJadwalBentrok` (Open/Closed)** |
+| **Coupling Komponen** | Monolitik | Monolitik | Refactor relasi | Terputus via `String[]` | **Loose-coupling murni berbasis interface & event-driven** |
 
 ---
 
@@ -139,6 +137,6 @@ Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan t
 - Sequence Diagram PMB (Versi 2): [pmb-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.mmd) & [pmb-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.md)
 - Sequence Diagram Validasi KRS (Versi 2): [krs-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.mmd) & [krs-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.md)
 - Use Case Diagram (Versi 2): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
-- Kode Mermaid Class Diagram Versi 6: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
+- Kode Mermaid Class Diagram Versi 7: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 - Dokumen Keputusan Arsitektur: [ADR-001.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf)
 - Catatan Transparansi AI: [ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md)

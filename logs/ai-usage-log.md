@@ -833,6 +833,54 @@
 - **Act:** Memodifikasi `app/services/pmb.py`, memperluas `tests/test_state_machine.py`, memvalidasi seluruh 46 unit test lolos tanpa error, mendokumentasikan analisis perbaikan pada Bagian 9 dokumen Minggu 4, serta menyusun catatan log transparansi AI.
 - **Reflect:** Menghadapi beban kerja multi-worker dengan konkurensi tinggi membutuhkan pemahaman mendalam tentang semantik locking mesin basis data relasional (perbedaan Gap Lock vs Record Lock di InnoDB). Arsitektur yang tangguh mengombinasikan pencegahan di level SQL (atomic upsert) dan pertahanan di level aplikasi (self-healing idempotency & resilient retry loops).
 
+---
+
+### Prompt #7 (versi: V7 - Peningkatan Test Coverage 99%, Audit Best Practices, & Eliminasi Asersi Lemah)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Meningkatkan cakupan pengujian (*test coverage*) modul PMB mendekati 100% menggunakan `pytest --cov=app --cov-branch --cov-report=term-missing`, menguji seluruh cabang kritis yang belum tersentuh (retry exhaustion, kuota 9999, race condition safety net, validasi batas usia, dialek MySQL, batas transaksi `auto_commit=False`), serta memperketat seluruh asersi lemah (*weak assertions*) sesuai *best practice* rekayasa perangkat lunak.
+- **Prompt:**
+  ```text
+  Coba kamu test menggunakan `pytest --cov=app --cov-report=term-missing`.
+
+  Untuk setiap baris atau cabang yang belum tersentuh, tentukan apakah itu
+  cabang penting (error handling, 400/404/409, batas 9999, retry) dan usulkan
+  tes tambahan. Peringatkan juga bagian yang coverage-nya tinggi tetapi
+  assert-nya lemah.
+
+  [Dilanjutkan instruksi pengguna:]
+  oke coba kamu perbaiki untuk coverage (terapkan bestpractice), kemudian kamu commit dan tambahkan di ai-usage-log
+  ```
+- **Output ringkas:**
+  1. Penambahan berkas uji baru [tests/test_coverage_edge_cases.py](file:///home/zainun/git/istn/sevima-mini/tests/test_coverage_edge_cases.py) dengan 22 skenario pengujian komprehensif:
+     - `test_database_get_db_lifecycle`: Memverifikasi siklus generator `get_db()` dan penutupan sesi pada blok `finally`.
+     - `test_seed_data_execution_and_idempotency` & `test_seed_data_initial_insert_and_exception`: Menguji skrip seeding master data, pemanggilan `db.add`, `db.commit`, penanganan exception, dan `db.rollback`.
+     - `test_root_endpoint_health_check` & `test_custom_openapi_schema_caching_and_removal_of_422`: Menguji endpoint root serta penghapusan respons 422 pada skema OpenAPI (ADR-003) dan mekanisme *schema caching*.
+     - `test_models_repr`: Menguji representasi string `__repr__` untuk seluruh model data PMB.
+     - `test_schema_phone_sanitizer_non_string` & `test_schema_age_validation_boundaries`: Menguji batas usia < 14 tahun (400), usia > 80 tahun (400), dan nilai null pada tanggal lahir.
+     - `test_generate_nim_mysql_dialect` & `test_generate_nim_other_dialect`: Menguji eksekusi atomic UPSERT pada dialek MySQL InnoDB dan fallback nested transaction pada dialek lain.
+     - `test_register_commit_race_condition_*`: Menguji penanganan `IntegrityError` saat commit registrasi untuk unique email (409), foreign key (400), check constraint (400), dan fallback (409).
+     - `test_approve_retry_exhaustion_raises_409`: Menguji kegagalan retry 3 kali melempar HTTP 409 Conflict dan melakukan rollback 3 kali.
+     - `test_approve_quota_9999_exceeded_via_endpoint`: Menguji penolakan approval HTTP 400 saat kuota 9999 terlampaui.
+     - `test_approve_calon_orphan_prodi_raises_400`: Menguji pelemparan HTTP 400 saat relasi prodi calon mahasiswa tidak ditemukan.
+     - `test_approve_and_reject_with_auto_commit_false`: Menguji composability transaksi unit-of-work di mana hanya `db.flush()` yang dipanggil tanpa `db.commit()`.
+  2. Perbaikan dan penguatan asersi lemah pada pengujian eksisting:
+     - [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py): Menambahkan spy verifikasi `db.rollback` pada uji retry dan memperluas verifikasi body respons pada `test_09`.
+     - [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py): Menambahkan asersi detail pesan error pada pengujian 404.
+     - [tests/test_pmb_pytest.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb_pytest.py): Memperketat asersi validasi format nomor HP agar spesifik memeriksa field `phone`, serta memverifikasi invarian database counter `last_number` tidak bertambah pada operasi idempotent.
+  3. Konfigurasi [.gitignore](file:///home/zainun/git/istn/sevima-mini/.gitignore) untuk mengabaikan artefak `.coverage` dan `.pytest_cache/`.
+  4. Hasil akhir: **Test coverage melonjak menjadi 99%** (366/367 statements ter-cover), dengan seluruh **68 tes pytest** dan **39 tes unittest** lolos 100%.
+  5. Pembaruan dokumentasi di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Strict & Specific Assertions:** Mengganti asersi status code tunggal (*status-only checks*) dan substring pencocokan longgar dengan verifikasi struktur body, pesan error spesifik per-field, dan efek samping database riil (*database state invariance*).
+  2. **Comprehensive Concurrency Safety Net Coverage:** Menguji seluruh kemungkinan rute benturan basis data (unique conflict, foreign key error, retry exhaustion) melalui simulasi *flaky/mocked transactions* sehingga perilakunya di produksi terbukti deterministik.
+- **Commit terkait:** `24c2871` - `test(pmb): boost test coverage to 99% with edge cases, strong assertions, and best practices [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Analisis coverage awal menunjukkan angka 79% (75% branch) di mana cabang-cabang penanganan error penting (seperti retry exhaustion 409, kuota 9999 pada service level, batas usia pendaftaran, dan kegagalan commit akibat race condition) belum teruji. Selain itu, ditemukan asersi lemah pada beberapa pengujian yang hanya memeriksa kode status 200/404 tanpa memvalidasi integritas data respons.
+- **Plan:** Menyusun rencana pengujian menyeluruh yang mencakup kasus batas (*edge cases*), simulasi dialek MySQL produksi, verifikasi transaksi unit-of-work, serta memperkuat asersi pengujian eksisting dengan spy rollback dan verifikasi invarian tabel database.
+- **Act:** Mengimplementasikan 22 tes baru di `tests/test_coverage_edge_cases.py`, memperketat asersi di `test_nim_counter.py`, `test_state_machine.py`, dan `test_pmb_pytest.py`, menjalankan analisis coverage (mencapai 99%), dan mendokumentasikan hasilnya.
+- **Reflect:** Angka coverage tinggi semata tidak menjamin kualitas tanpa asersi yang kuat. Mengombinasikan cakupan cabang yang tinggi (99%) dengan asersi yang presisi (*asserting state, behavior, and side-effects*) adalah standar emas pengujian perangkat lunak profesional untuk menjamin stabilitas sistem di lingkungan produksi.
+
 
 
 

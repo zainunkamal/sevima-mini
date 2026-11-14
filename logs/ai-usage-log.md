@@ -615,7 +615,7 @@
   2. **Boundary Transaksi Bersih (No Internal Commit):** `generate_nim` mematuhi prinsip transaksi atomik dengan hanya memanggil `db.flush()`. Endpoint pemanggil memiliki kendali penuh untuk melakukan commit atau rollback jika terjadi kegagalan pada langkah bisnis selanjutnya.
   3. **Mitigasi Race Condition Inisialisasi Counter:** Penggunaan nested transaction / savepoint saat baris counter pertama kali dimasukkan mencegah timbulnya deadlock antar-worker akibat gap-locking di MySQL InnoDB.
   4. **Resilient Retry Loop:** Mengamankan transaksi persetujuan pendaftar dengan loop retry maksimal 3 kali dan `db.rollback()` segera untuk membebaskan lock dan membersihkan state session.
-- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `feat(pmb): implement multi-worker NIM generator with row lock, NimCounter model, and retry mechanism [AI-Assisted]`
+- **Commit terkait:** `3d30516` - `feat(pmb): implement multi-worker NIM generator with row lock, NimCounter model, and retry mechanism [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Pada aplikasi multi-worker, penomoran berurutan rawan memicu duplikasi akibat race condition jika mengandalkan in-memory lock. Selain itu, fungsi penomoran yang melakukan commit mandiri merusak prinsip atomisitas transaksi endpoint.

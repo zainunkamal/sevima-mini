@@ -156,82 +156,162 @@ def generate_nim(db: Session, tahun: int, kode_prodi: str) -> str:
     return f"{tahun:04d}{prodi_str}{counter.last_number:04d}"
 
 
-def approve_calon_mahasiswa(
-    db: Session,
-    calon_id: int,
-    tahun: Optional[int] = None,
-    max_retries: int = 3,
-) -> CalonMahasiswa:
-    """
-    Menyetujui pendaftaran calon mahasiswa dan menerbitkan NIM secara atomik.
-    Menangani potensi benturan IntegrityError dengan rollback dan retry maksimal 3 kali.
-    """
-    if tahun is None:
-        tahun = datetime.now().year
+class PMBService:
+    """Service pengelola siklus hidup PMB dan mesin transisi state pendaftaran."""
 
-    for attempt in range(1, max_retries + 1):
+    @staticmethod
+    def register(db: Session, request: RegisterRequest) -> CalonMahasiswa:
+        return register_calon_mahasiswa(db, request)
+
+    @staticmethod
+    def approve(
+        db: Session,
+        calon_id: int,
+        tahun: Optional[int] = None,
+        max_retries: int = 3,
+    ) -> CalonMahasiswa:
+        """
+        Menyetujui pendaftaran calon mahasiswa:
+        - State machine: pending -> approved; approved final; rejected -> 409.
+        - Idempotent: jika sudah approved, kembalikan 200 + NIM lama tanpa memanggil generator.
+        - Menggunakan with_for_update untuk exclusive row lock.
+        - Validasi kode prodi wajib 3 digit angka & prodi ditemukan -> 400 jika tidak valid.
+        - Catat approved_at (UTC).
+        - Commit sekali di akhir (satu transaksi atomik).
+        """
+        for attempt in range(1, max_retries + 1):
+            try:
+                # 1. Ambil pendaftar dengan exclusive row lock (with_for_update)
+                stmt = (
+                    select(CalonMahasiswa)
+                    .where(CalonMahasiswa.id == calon_id)
+                    .with_for_update()
+                )
+                calon = db.scalar(stmt)
+
+                # 404 jika pendaftar tidak ditemukan
+                if not calon:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Calon mahasiswa dengan ID {calon_id} tidak ditemukan.",
+                    )
+
+                # Jika sudah approved -> kembalikan 200 + NIM lama TANPA memanggil generator (idempotent)
+                if calon.status == StatusPMB.APPROVED:
+                    return calon
+
+                # Jika rejected -> 409 (status final, tidak boleh transisi)
+                if calon.status == StatusPMB.REJECTED:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Calon mahasiswa sudah berstatus rejected dan tidak dapat disetujui.",
+                    )
+
+                # Validasi eksistensi program studi
+                prodi = calon.program_studi
+                if not prodi:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Program studi calon mahasiswa tidak ditemukan.",
+                    )
+
+                # Validasi kode prodi wajib 3 digit angka
+                if not prodi.kode or len(prodi.kode) != 3 or not prodi.kode.isdigit():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Kode program studi '{prodi.kode}' tidak valid. Kode prodi harus terdiri dari 3 digit angka.",
+                    )
+
+                # Catat approved_at (UTC)
+                calon.approved_at = datetime.now(timezone.utc)
+
+                # Panggil generator NIM
+                tahun_aktif = tahun or datetime.now(timezone.utc).year
+                calon.nim = generate_nim(db, tahun=tahun_aktif, kode_prodi=prodi.kode)
+
+                # Transisi status ke approved
+                calon.status = StatusPMB.APPROVED
+
+                # Commit SEKALI di akhir (satu transaksi atomik)
+                db.commit()
+                db.refresh(calon)
+                return calon
+
+            except (IntegrityError, OperationalError):
+                db.rollback()
+                if attempt == max_retries:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Gagal menyetujui pendaftaran setelah 3 kali percobaan karena konflik integritas data.",
+                    )
+                time.sleep(0.05 * attempt)
+            except NimLimitExceededError as exc:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(exc),
+                )
+            except HTTPException:
+                db.rollback()
+                raise
+            except Exception:
+                db.rollback()
+                raise
+
+    @staticmethod
+    def reject(db: Session, calon_id: int) -> CalonMahasiswa:
+        """
+        Menolak pendaftaran calon mahasiswa:
+        - State machine: hanya boleh dari pending.
+        - Idempotent: jika sudah rejected -> 200.
+        - Approved final: jika sudah approved -> 409.
+        - Menggunakan with_for_update untuk exclusive row lock.
+        - Commit sekali di akhir (satu transaksi).
+        """
         try:
-            # Cari calon mahasiswa
-            calon = db.scalar(
-                select(CalonMahasiswa).where(CalonMahasiswa.id == calon_id)
+            # 1. Ambil pendaftar dengan exclusive row lock (with_for_update)
+            stmt = (
+                select(CalonMahasiswa)
+                .where(CalonMahasiswa.id == calon_id)
+                .with_for_update()
             )
+            calon = db.scalar(stmt)
+
+            # 404 jika pendaftar tidak ditemukan
             if not calon:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Calon mahasiswa dengan ID {calon_id} tidak ditemukan.",
                 )
 
-            # Jika sudah approved, kembalikan data yang ada (idempotent)
+            # Reject hanya dari pending; approved -> 409
             if calon.status == StatusPMB.APPROVED:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Calon mahasiswa sudah berstatus approved dan tidak dapat ditolak.",
+                )
+
+            # Jika sudah rejected -> kembalikan 200 (idempotent)
+            if calon.status == StatusPMB.REJECTED:
                 return calon
 
-            if calon.status == StatusPMB.REJECTED:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Calon mahasiswa yang telah ditolak tidak dapat disetujui kembali.",
-                )
+            # Transisi dari pending ke rejected
+            calon.status = StatusPMB.REJECTED
 
-            # Validasi relasi program studi
-            prodi = calon.program_studi
-            if not prodi:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Program studi calon mahasiswa tidak ditemukan.",
-                )
-
-            # Terbitkan NIM baru
-            calon.nim = generate_nim(db, tahun=tahun, kode_prodi=prodi.kode)
-            calon.status = StatusPMB.APPROVED
-            calon.approved_at = datetime.now(timezone.utc)
-
-            # Commit transaksi pada level endpoint
+            # Commit SEKALI di akhir
             db.commit()
             db.refresh(calon)
             return calon
 
-        except (IntegrityError, OperationalError):
-            # Rollback transaksi segera untuk melepas row lock dan membersihkan state session
-            db.rollback()
-
-            if attempt == max_retries:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Gagal menerbitkan NIM setelah 3 kali percobaan karena konflik konkurensi integritas data.",
-                )
-
-            # Backoff singkat sebelum mencoba ulang
-            time.sleep(0.05 * attempt)
-
-        except NimLimitExceededError as exc:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(exc),
-            )
         except HTTPException:
             db.rollback()
             raise
         except Exception:
             db.rollback()
             raise
+
+
+# Alias fungsi untuk kemudahan impor & kompatibilitas modul
+approve_calon_mahasiswa = PMBService.approve
+reject_calon_mahasiswa = PMBService.reject
 

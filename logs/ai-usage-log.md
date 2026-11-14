@@ -623,3 +623,43 @@
 - **Act:** Mengimplementasikan model deklaratif ORM `NimCounter`, membuat migrasi Alembic `20261114_0002`, menulis fungsi `generate_nim` dan `approve_calon_mahasiswa`, mengekspos endpoint FastAPI, menambahkan 9 unit test komprehensif (seluruh 26 unit test lolos 100%), serta mendokumentasikan analisis konkurensi di folder perbaikan Minggu 4.
 - **Reflect:** Menyerahkan tanggung jawab penguncian konkurensi ke database engine dan menjaga boundary transaksi tetap di tangan endpoint menghasilkan sistem backend yang *robust*, terhindar dari nomor urut bolong/duplikat, serta siap dijalankan pada skala produksi multi-worker.
 
+---
+
+### Prompt #2 (versi: V2 - State Machine Transisi PMB: PUT Approve & Reject, Idempotensi, & Thin Router)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Mengimplementasikan mesin transisi status pendaftaran (*State Machine*) untuk calon mahasiswa melalui endpoint `PUT /api/pmb/approve/{id}` dan `PUT /api/pmb/reject/{id}`, menjamin idempotensi operasi, mengunci baris pendaftar via `with_for_update()`, memvalidasi format kode program studi wajib 3 digit angka, melakukan *single-commit transaction*, mengisolasi aturan bisnis pada `PMBService`, serta menyaring data pribadi pada skema output DTO.
+- **Prompt:**
+  ```text
+  Konteks: berikut model, skema, dan generate_nim saya:
+
+  Buat endpoint PUT /api/pmb/approve/{id} dan PUT /api/pmb/reject/{id}:
+  - State machine: pending -> approved/rejected; approved dan rejected final.
+  - Approve: ambil pendaftar dengan with_for_update; 404 jika tidak ada;
+    jika sudah approved kembalikan 200 + NIM lama TANPA memanggil generator
+    (idempotent); jika rejected -> 409; jika kode prodi bukan 3 digit atau
+    prodi tidak ditemukan -> 400; catat approved_at (UTC); panggil generate_nim;
+    commit SEKALI di akhir (satu transaksi).
+  - Reject: hanya dari pending; approved -> 409; rejected -> 200 (idempotent).
+  - Aturan transisi diletakkan di PMBService, router tetap tipis.
+  - Respons memakai skema Pydantic khusus output (jangan bocorkan data pribadi).
+  ```
+- **Output ringkas:**
+  1. Lapisan domain service `PMBService` pada [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py) yang mengimplementasikan method `approve()` dan `reject()` dengan penegakan state machine, kueri `select(CalonMahasiswa).with_for_update()`, verifikasi eksistensi dan validasi 3 digit angka kode prodi (HTTP 400), pencatatan timestamp `approved_at` berbasis UTC, pencegahan pemanggilan generator NIM ganda pada kondisi idempotent, dan *single commit* di akhir alur.
+  2. Implementasi router tipis (*thin controller*) di [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py) untuk rute `PUT /api/pmb/approve/{id}` dan `PUT /api/pmb/reject/{id}` dengan dependency injection `get_db` dan penanganan kode status 200, 400, 404, dan 409.
+  3. Pemeliharaan skema Pydantic output `PendaftarOut` pada [app/schemas/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/schemas/pmb.py) yang secara ketat menyaring data privat (`alamat` dan `tanggal_lahir`).
+  4. Suite pengujian otomatis baru di [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py) dengan 9 skenario uji (transisi pending->approved, idempotensi approve tanpa generator, penolakan approve dari rejected -> 409, penolakan kode prodi non-3 digit angka -> 400, 404 not found, transisi pending->rejected, idempotensi reject, penolakan reject dari approved -> 409, dan pengujian penyaringan data pribadi). Seluruh **35 unit test lolos 100%**.
+  5. Pembaruan dokumentasi perbaikan di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md) dan [README.md](file:///home/zainun/git/istn/sevima-mini/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Strict State Machine (Terminal States):** Status `approved` dan `rejected` bersifat terminal. Upaya merusak state (misal menolak mahasiswa yang sudah ber-NIM atau menyetujui mahasiswa yang sudah ditolak) digagalkan di lapisan service dengan HTTP 409 Conflict.
+  2. **True Idempotency:** Memanggil approve berulang kali pada calon yang sudah approved tidak akan mengonsumsi nomor urut NIM baru dari database counter (`last_number` tidak bertambah), melainkan langsung mengembalikan data dan NIM eksisting dengan HTTP 200 OK.
+  3. **Integritas Format Kode Prodi:** Penegakan bahwa kode prodi wajib terdiri dari 3 digit angka (`isdigit()` dan `len == 3`) mencegah terbitnya NIM berformat salah atau tercampur huruf saat registrasi disetujui.
+  4. **Pemisahan Peran Arsitektural (Separation of Concerns):** Seluruh aturan transisi dan transaksi diisolasi di dalam `PMBService`, menjaga router tetap deklaratif dan ramping.
+- **Commit terkait:** `[PENDING_COMMIT_HASH]` - `feat(pmb): implement state machine PUT approve and reject endpoints with idempotency and thin router [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Siklus hidup pendaftaran rentan terhadap inkonsistensi data jika transisi status tidak memiliki aturan terminal yang tegas (misal terjadi pergantian bolak-balik antara approved dan rejected) atau jika operasi approval berulang menyebabkan pemborosan nomor urut NIM akibat generator yang terus dipanggil tanpa proteksi idempotensi.
+- **Plan:** Membangun *State Machine* terpusat pada `PMBService` dengan exclusive lock `with_for_update()`, mendefinisikan rute idempotent untuk `PUT /approve/{id}` dan `PUT /reject/{id}`, memvalidasi eksistensi dan format 3 digit kode prodi, memastikan single transaction commit, dan memverifikasi proteksi privasi pada DTO output.
+- **Act:** Mengimplementasikan method `PMBService.approve` dan `PMBService.reject`, menambahkan handler route pada `app/routers/pmb.py`, menyusun 9 unit test baru di `tests/test_state_machine.py`, mengeksekusi suite unit test (35/35 lolos), serta memperbarui dokumen perbaikan dan log AI.
+- **Reflect:** Mengombinasikan state machine berbasis transisi ketat, row locking, dan idempotensi menghasilkan API yang aman terhadap *concurrency bugs*, stabil saat terjadi *network retries* dari klien, serta mematuhi prinsip kebersihan arsitektur rekayasa perangkat lunak modern.
+
+

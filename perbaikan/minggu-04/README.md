@@ -161,17 +161,47 @@ Misalkan **Request A (Worker 1)** dan **Request B (Worker 2)** sama-sama ingin m
 
 ---
 
+## 📌 Bagian 6: Mesin Keadaan (State Machine) Transisi PMB & Router Tipis
+
+Pada iterasi lanjutan Minggu 4, diimplementasikan mesin keadaan (*State Machine*) untuk siklus hidup pendaftaran calon mahasiswa melalui class `PMBService` dan dua endpoint RESTful:
+- **`PUT /api/pmb/approve/{id}`**: Menyetujui pendaftaran dan menerbitkan NIM.
+- **`PUT /api/pmb/reject/{id}`**: Menolak pendaftaran calon mahasiswa.
+
+### 1. Diagram State Machine & Aturan Transisi
+- **State Awal:** `pending` (dihasilkan saat pendaftaran baru via `POST /api/pmb/register`).
+- **State Final:** `approved` dan `rejected` bersifat **terminal (final)** dan tidak dapat saling berganti status.
+  - Pendaftar berstatus `rejected` yang dicoba disetujui (`PUT /approve/{id}`) ditolak dengan respons **`HTTP 409 Conflict`**.
+  - Pendaftar berstatus `approved` yang dicoba ditolak (`PUT /reject/{id}`) ditolak dengan respons **`HTTP 409 Conflict`**.
+
+### 2. Jaminan Idempotensi Transaksi
+- **Idempotent Approve:** Jika pendaftar yang sudah berstatus `approved` dipanggil kembali melalui `PUT /approve/{id}`, sistem mengembalikan kode **`HTTP 200 OK`** beserta NIM yang sudah ada **TANPA memanggil generator NIM kembali**. Ini menjamin nomor urut counter tidak meloncat.
+- **Idempotent Reject:** Jika pendaftar yang sudah berstatus `rejected` dipanggil kembali melalui `PUT /reject/{id}`, sistem mengembalikan kode **`HTTP 200 OK`** secara aman tanpa memodifikasi data.
+
+### 3. Validasi Ketat Kode Prodi 3 Digit
+Sebelum menerbitkan NIM pada alur `approve`, sistem memverifikasi bahwa:
+1. Program studi wajib terdaftar di basis data (respons `HTTP 400 Bad Request` jika tidak ditemukan).
+2. Kode program studi wajib berupa **3 digit angka** (`len == 3` dan `isdigit()`, misal: `'001'`). Jika kode berisi huruf (misal: `'TIF'`) atau panjangnya tidak sama dengan 3 digit, sistem melempar **`HTTP 400 Bad Request`**.
+
+### 4. Thin Controller & Privacy by Design
+- Seluruh logika transisi dan transaksi diisolasi di dalam `PMBService` pada [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py), sehingga router [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py) tetap tipis (*thin controller*).
+- Respons kedua endpoint terikat pada skema Pydantic `PendaftarOut` pada [app/schemas/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/schemas/pmb.py) yang menyaring data sensitif calon mahasiswa (atribut `alamat` dan `tanggal_lahir` tidak dibocorkan ke publik).
+
+---
+
 ## 🧪 Bukti Pengujian Otomatis
 
-Implementasi telah diuji secara menyeluruh melalui berkas [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py) dengan 9 skenario pengujian spesifik:
-1. `test_01_generate_nim_format_and_sequence`: Format 11 digit zero-padded dan kenaikan sekuensial.
-2. `test_02_independent_counter_per_combination`: Penghitungan ulang mulai dari 1 per kombinasi `(tahun, kode_prodi)`.
-3. `test_03_numeric_prodi_zfill`: Penambahan leading zero otomatis pada kode prodi numerik (misal `"5"` menjadi `"005"`).
-4. `test_04_limit_9999_exceeded_raises_error`: Penolakan dan pelemparan `NimLimitExceededError` saat counter mencapai 9999.
-5. `test_05_function_does_not_commit_directly`: Bukti bahwa `generate_nim` tidak commit (rollback sesi membatalkan kenaikan counter).
-6. `test_06_approve_calon_mahasiswa_success`: Alur lengkap persetujuan pendaftar PMB menghasilkan status `approved` dan NIM terbit.
-7. `test_07_approve_idempotent`: Idempotensi persetujuan ganda.
-8. `test_08_approve_retry_on_integrity_error`: Simulasi benturan `IntegrityError` memicu mekanisme rollback dan retry hingga 3 kali.
-9. `test_09_api_endpoint_approve_success`: Pengujian rute HTTP `POST /api/pmb/calon-mahasiswa/{id}/approve` via `TestClient`.
+Implementasi telah diuji secara menyeluruh melalui berkas pengujian otomatis:
+1. [tests/test_nim_counter.py](file:///home/zainun/git/istn/sevima-mini/tests/test_nim_counter.py): 9 skenario pengujian spesifik untuk format NIM 11 digit zero-padded, independensi counter, batas kuota 9999, non-commit flush, dan retry mechanism.
+2. [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py): 9 skenario pengujian spesifik untuk transisi state machine PMB:
+   - `test_01_approve_pending_success`: Transisi pending -> approved (200, NIM terbit, approved_at UTC, data pribadi tersaring).
+   - `test_02_approve_idempotent_returns_old_nim_without_calling_generator`: Idempotensi persetujuan ganda tanpa memanggil `generate_nim`.
+   - `test_03_approve_rejected_returns_409`: Pencegahan transisi dari rejected ke approved (409 Conflict).
+   - `test_04_approve_invalid_prodi_kode_returns_400`: Penolakan kode prodi non-3-digit angka ('TIF' dan '12' mengembalikan 400 Bad Request).
+   - `test_05_approve_not_found_returns_404`: ID calon tidak terdaftar mengembalikan 404 Not Found.
+   - `test_06_reject_pending_success`: Transisi pending -> rejected (200, NIM null, data pribadi tersaring).
+   - `test_07_reject_idempotent_returns_200`: Idempotensi penolakan ganda (200 OK).
+   - `test_08_reject_approved_returns_409`: Pencegahan penolakan pendaftar yang sudah approved (409 Conflict).
+   - `test_09_reject_not_found_returns_404`: ID calon tidak terdaftar mengembalikan 404 Not Found.
 
-Seluruh suite pengujian proyek (total 26 pengujian pada `test_api_pmb.py` dan `test_nim_counter.py`, ditambah 7 pengujian pada `test_pmb.py`) **lolos 100% tanpa error**.
+Seluruh suite pengujian proyek (total **35 unit test** pada `test_api_pmb.py`, `test_nim_counter.py`, dan `test_state_machine.py`, serta 7 pengujian pada `test_pmb.py`) **lolos 100% tanpa error**.
+

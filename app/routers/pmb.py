@@ -3,7 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.pmb import PendaftarOut, RegisterRequest
-from app.services.pmb import approve_calon_mahasiswa, register_calon_mahasiswa
+from app.services.pmb import (
+    PMBService,
+    approve_calon_mahasiswa,
+    register_calon_mahasiswa,
+    reject_calon_mahasiswa,
+)
 
 router = APIRouter(prefix="/api/pmb", tags=["PMB"])
 
@@ -45,30 +50,79 @@ def register(
     db: Session = Depends(get_db),
 ) -> PendaftarOut:
     """Menerima dan memproses pendaftaran calon mahasiswa baru (Thin Controller)."""
-    return register_calon_mahasiswa(db, payload)
+    return PMBService.register(db, payload)
+
+
+@router.put(
+    "/approve/{id}",
+    response_model=PendaftarOut,
+    status_code=status.HTTP_200_OK,
+    summary="Persetujuan Pendaftaran Calon Mahasiswa & Penerbitan NIM",
+    responses={
+        200: {
+            "description": "Pendaftaran berhasil disetujui atau sudah approved (idempotent)",
+        },
+        400: {
+            "description": "Kode prodi bukan 3 digit angka atau program studi tidak ditemukan",
+        },
+        404: {
+            "description": "Calon mahasiswa tidak ditemukan",
+        },
+        409: {
+            "description": "Konflik status pendaftaran (calon mahasiswa berstatus rejected)",
+        },
+    },
+)
+def approve(
+    id: int,
+    db: Session = Depends(get_db),
+) -> PendaftarOut:
+    """
+    Menyetujui pendaftaran calon mahasiswa dan menerbitkan NIM.
+    Delegasi aturan transisi state ke PMBService (Thin Controller).
+    """
+    return PMBService.approve(db, calon_id=id)
+
+
+@router.put(
+    "/reject/{id}",
+    response_model=PendaftarOut,
+    status_code=status.HTTP_200_OK,
+    summary="Penolakan Pendaftaran Calon Mahasiswa",
+    responses={
+        200: {
+            "description": "Pendaftaran berhasil ditolak atau sudah rejected (idempotent)",
+        },
+        404: {
+            "description": "Calon mahasiswa tidak ditemukan",
+        },
+        409: {
+            "description": "Konflik status pendaftaran (calon mahasiswa sudah berstatus approved)",
+        },
+    },
+)
+def reject(
+    id: int,
+    db: Session = Depends(get_db),
+) -> PendaftarOut:
+    """
+    Menolak pendaftaran calon mahasiswa (hanya dari pending).
+    Delegasi aturan transisi state ke PMBService (Thin Controller).
+    """
+    return PMBService.reject(db, calon_id=id)
 
 
 @router.post(
     "/calon-mahasiswa/{calon_id}/approve",
     response_model=PendaftarOut,
     status_code=status.HTTP_200_OK,
-    summary="Persetujuan Pendaftaran & Penerbitan NIM Calon Mahasiswa",
-    responses={
-        400: {
-            "description": "Status tidak valid atau kuota nomor urut NIM terlampaui",
-        },
-        404: {
-            "description": "Calon mahasiswa tidak ditemukan",
-        },
-        409: {
-            "description": "Konflik integritas data / gagal menerbitkan NIM setelah 3 kali retry",
-        },
-    },
+    include_in_schema=False,
 )
-def approve(
+def approve_alias(
     calon_id: int,
     db: Session = Depends(get_db),
 ) -> PendaftarOut:
-    """Menyetujui calon mahasiswa dan menerbitkan NIM otomatis dengan row-lock & retry."""
-    return approve_calon_mahasiswa(db, calon_id)
+    """Alias route untuk kompatibilitas pengujian."""
+    return PMBService.approve(db, calon_id=calon_id)
+
 

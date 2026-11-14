@@ -79,14 +79,14 @@ sevima-mini/
 │       └── README.md             # Spesifikasi model SQLAlchemy 2.0 & migrasi Alembic
 ├── app/                          # Kode sumber backend aplikasi (Python/SQLAlchemy 2.0)
 │   ├── database.py               # Setup engine, session, dan SQLite PRAGMA listener
-│   └── models/                   # Definisi model deklaratif ORM
-│       ├── __init__.py           # Package registry model
-│       └── pmb.py                # Model ProgramStudi, JalurMasuk, CalonMahasiswa
-├── alembic/                      # Konfigurasi dan berkas migrasi skema basis data
-│   ├── env.py                    # Environment runner Alembic dengan SQLite PRAGMA hook
-│   ├── script.py.mako            # Template migrasi
-│   └── versions/                 # Riwayat migrasi versi basis data
-│       └── 20261114_0001_create_pmb_tables.py # Migrasi awal 3 tabel PMB
+│   ├── models/                   # Definisi model deklaratif ORM
+│   │   ├── __init__.py           # Package registry model
+│   │   └── pmb.py                # Model ProgramStudi, JalurMasuk, CalonMahasiswa
+│   └── alembic/                  # Konfigurasi dan berkas migrasi skema basis data
+│       ├── env.py                # Environment runner Alembic dengan SQLite PRAGMA hook
+│       ├── script.py.mako        # Template migrasi
+│       └── versions/             # Riwayat migrasi versi basis data
+│           └── 20261114_0001_create_pmb_tables.py # Migrasi awal 3 tabel PMB
 ├── alembic.ini                   # Konfigurasi utama Alembic
 ├── documents/                    # Dokumen keputusan arsitektural (ADR)
 │   ├── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment

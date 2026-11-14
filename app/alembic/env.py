@@ -8,7 +8,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 # Tambahkan direktori root proyek ke sys.path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.database import Base
 import app.models  # Memuat seluruh model agar terdaftar di Base.metadata

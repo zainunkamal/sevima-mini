@@ -37,7 +37,7 @@ Pada Minggu 3, dilakukan penerjemahan desain struktural PMB ke dalam skema basis
 
 1. **Penegakan `PRAGMA foreign_keys = ON;` pada SQLite:**
    - Secara default SQLite menonaktifkan integritas foreign key per koneksi.
-   - Diaktifkan secara persisten melalui SQLAlchemy event listener `@event.listens_for(Engine, "connect")` pada `app/database.py` dan pada konfigurasi migrasi `alembic/env.py`.
+   - Diaktifkan secara persisten melalui SQLAlchemy event listener `@event.listens_for(Engine, "connect")` pada `app/database.py` dan pada konfigurasi migrasi `app/alembic/env.py`.
 2. **Urutan Eksekusi Migrasi (`upgrade` & `downgrade`):**
    - Pada `upgrade()`: Tabel parent (`program_studi`, `jalur_masuk`) dibuat terlebih dahulu sebelum tabel child (`calon_mahasiswa`).
    - Pada `downgrade()`: Tabel child (`calon_mahasiswa`) **wajib dihapus terlebih dahulu** sebelum tabel parent (`jalur_masuk`, `program_studi`) untuk mematuhi integritas referensial dan mencegah kegagalan foreign key constraint.

@@ -75,9 +75,13 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan temuan evaluasi konsistensi, dengan mengadopsi **Opsi A (Layered / Clean Architecture)** dan melengkapi sequence diagram sehingga **100% dari 10 Use Case memiliki pemodelan alur dinamis**.
 
-### 1. Class Diagram Versi 5 (Integrasi Arsitektur Berlapis)
-![Class Diagram Versi 5](minggu-02/class_diagram_versi_5.png)
-- **Pembaruan:** Menambahkan komponen *Application Service* (`KRSManager`, `PMBService`), *Domain Service* (`KRSValidator`), *Factory* (`UserFactory`), *Data Access* (`Repository`), dan *Infrastructure* (`NotificationService`). Menyelaraskan seluruh method yang dipanggil di Sequence Diagram.
+### 1. Class Diagram Versi 6 (Refactor Arsitektur SOLID Penuh)
+![Class Diagram Versi 6](minggu-02/class_diagram_versi_6.png)
+- **Pembaruan:**
+  - **Eliminasi God Object `Admin` & `Mahasiswa` (SRP):** Logika operasional didelegasikan ke service modular: `PMBService`, `KRSService`, `JadwalService`, `NilaiService`, `KeuanganService`, `PresensiService`, dan `NotificationService`.
+  - **Role Interfaces (ISP & DIP):** Pengenalan antarmuka peran `PengisiKRS`, `PenyetujuKRS`, dan `Penilai`.
+  - **Pola Strategy Rule Object (OCP & DIP):** Abstraksi `ValidationRule` (`PrerequisiteRule`, `MaxCreditRule`, `ScheduleConflictRule`) diinjeksi ke `KRSValidator`.
+  - **Abstraksi Notifikasi (DIP & OCP):** Abstraksi `NotificationChannel` (`EmailChannel`, `PushNotificationChannel`) diinjeksi ke `NotificationService`.
 - **Berkas Model:** [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 
 ### 2. Use Case Diagram (Versi 2)
@@ -116,14 +120,14 @@ Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan t
 
 ## Tabel Komparasi Riwayat Versi
 
-| Evaluasi Arsitektural | Versi 1 | Versi 2 | Versi 3 | Versi 4 (Final Refactor) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Enkapsulasi Atribut** | `protected (#)` | `private (-)` | `private (-)` | `private (-)` |
-| **Method `hitungIPK()`** | Tidak ada | Ada di `Mahasiswa` | Ada di `Mahasiswa` | Ada di `Mahasiswa` |
-| **Keterhubungan `Schedule`** | Hanya ke `Course` | Hanya ke `Course` | Hanya ke `Course` | **Terhubung ke `Enrollment` & `Dosen`** |
-| **Siklus Hidup PMB** | Subclass kaku | Subclass kaku | Subclass kaku | **Asosiasi & Method Konversi ke `Mahasiswa`** |
-| **Coupling `Course`-`Mahasiswa`**| Siklik (Course butuh Mahasiswa) | Siklik | Siklik | **Terputus (Course hanya butuh `String[]`)** |
-| **Tanggung Jawab KRS** | Ambigu | Ambigu | Ambigu | **SKS didelegasikan, validasi semester terstruktur** |
+| Evaluasi Arsitektural | Versi 1 | Versi 2 | Versi 3 | Versi 4 (Final Refactor) | Versi 6 (Refactor SOLID) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Enkapsulasi Atribut** | `protected (#)` | `private (-)` | `private (-)` | `private (-)` | **`private (-)` ketat pada seluruh kelas** |
+| **Pemisahan Peran (SRP)**| God Object `Admin` & `Mahasiswa` | God Object | God Object | God Object | **Layanan spesifik per modul (`PMB`, `KRS`, `Jadwal`, `Nilai`, `Keuangan`, `Presensi`)** |
+| **Role Interface (ISP)** | Tidak ada | Tidak ada | Tidak ada | Tidak ada | **Interface peran ramping (`PengisiKRS`, `PenyetujuKRS`, `Penilai`)** |
+| **Validasi Bisnis (OCP/DIP)**| Hardcoded di entitas | Hardcoded di entitas | Hardcoded | Hardcoded | **Strategy Pattern via `ValidationRule` (`Prerequisite`, `Credit`, `Conflict`)** |
+| **Abstraksi Notifikasi (DIP)**| Tidak ada | Tidak ada | Tidak ada | Tidak ada | **Injeksi kanal `NotificationChannel` (`Email`, `Push`)** |
+| **Coupling Entitas** | Monolitik | Monolitik | Refactor relasi | Terputus via `String[]` | **Clean POCO / Entitas mandiri bebas logika operasional** |
 
 ---
 
@@ -135,6 +139,6 @@ Pada iterasi ini, seluruh diagram diselaraskan secara komprehensif berdasarkan t
 - Sequence Diagram PMB (Versi 2): [pmb-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.mmd) & [pmb-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/pmb-sequence-diagram.md)
 - Sequence Diagram Validasi KRS (Versi 2): [krs-sequence-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.mmd) & [krs-sequence-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/krs-sequence-diagram.md)
 - Use Case Diagram (Versi 2): [use-case-diagram.puml](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.puml) & [use-case-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/use-case-diagram.md)
-- Kode Mermaid Class Diagram Versi 5: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
+- Kode Mermaid Class Diagram Versi 6: [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd) & [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md)
 - Dokumen Keputusan Arsitektur: [ADR-001.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf)
 - Catatan Transparansi AI: [ai-usage-log.md](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md)

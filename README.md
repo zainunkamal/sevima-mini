@@ -46,7 +46,7 @@ Arsitektur kelas pada SEVIMA Mini dibangun dengan mematuhi kaidah rekayasa peran
 sevima-mini/
 ├── README.md                     # Dokumentasi utama proyek
 ├── diagram/                      # Artefak kode diagram dan spesifikasi teknis
-│   ├── class-diagram.mmd         # Kode sumber Mermaid class diagram (Versi 5 - Layered Architecture)
+│   ├── class-diagram.mmd         # Kode sumber Mermaid class diagram (Versi 6 - Refactor SOLID Penuh)
 │   ├── class-diagram.md          # Spesifikasi rinci atribut, method, relasi, dan aturan bisnis
 │   ├── use-case-diagram.puml     # Kode sumber PlantUML Use Case Diagram (Versi 2)
 │   ├── use-case-diagram.md       # Spesifikasi formal use case, aktor, dan relasi include/extend
@@ -68,7 +68,7 @@ sevima-mini/
 │   │   ├── diagram_versi_3.png          # Versi 3 (Refactoring relasi & kardinalitas)
 │   │   └── diagram_versi_4.png          # Versi 4 (Perbaikan arsitektur kritis 1-4)
 │   └── minggu-02/                # Bukti visual pemodelan dinamis & sinkronisasi Minggu 2
-│       ├── class_diagram_versi_5.png    # Screenshot Class Diagram Versi 5
+│       ├── class_diagram_versi_6.png    # Screenshot Class Diagram Versi 6 (Refactor SOLID)
 │       ├── use_case_versi_2.png         # Screenshot Use Case Diagram Versi 2
 │       ├── krs_sequence_diagram_versi_2.png # Screenshot Sequence Validasi KRS
 │       ├── pmb_sequence_diagram_versi_2.png # Screenshot Sequence PMB
@@ -83,12 +83,48 @@ sevima-mini/
 
 ---
 
-## 📊 Class Diagram Terkini (Versi 5 - Integrasi Arsitektur Berlapis)
+## 📊 Class Diagram Terkini (Versi 6 - Refactor Arsitektur SOLID Penuh)
 
-Diagram kelas berikut merepresentasikan arsitektur berlapis (*Layered Architecture*) yang telah diselaraskan penuh dengan seluruh pemodelan dinamis Use Case dan Sequence Diagram:
+Diagram kelas berikut merepresentasikan arsitektur final yang telah mematuhi prinsip **SOLID** secara menyeluruh (SRP, ISP, DIP):
 
 ```mermaid
 classDiagram
+    %% ==========================================
+    %% 1. ROLE-BASED INTERFACES (ISP & DIP)
+    %% ==========================================
+    class PengisiKRS {
+        <<interface>>
+        +getNim() String
+        +getSemester() int
+        +getDaftarMatkulLulus() String[]
+    }
+
+    class PenyetujuKRS {
+        <<interface>>
+        +getNidn() String
+        +verifikasiRencanaStudi(String krsId, boolean disetujui) boolean
+    }
+
+    class Penilai {
+        <<interface>>
+        +getNidn() String
+        +inputNilaiMahasiswa(String enrollmentId, float nilaiAngka) boolean
+    }
+
+    class ValidationRule {
+        <<interface>>
+        +validate(String mahasiswaId, String[] daftarMatkul) boolean
+        +getErrorMessage() String
+    }
+
+    class NotificationChannel {
+        <<interface>>
+        +send(String recipient, String message) boolean
+    }
+
+    %% ==========================================
+    %% 2. DOMAIN ENTITIES (POCO / High Cohesion)
+    %% ==========================================
     class User {
         <<abstract>>
         -String id
@@ -111,33 +147,20 @@ classDiagram
         +getNim() String
         +getProgramStudi() String
         +getSemester() int
-        +hitungIPK() double
-        +hitungTotalSKS(int semester) int
-        +validasiBebanKRS(int semester) boolean
-        +cekDuplikasiCourse(String kodeCourse, int semester) boolean
-        +tambahEnrollment(Enrollment enrollment) boolean
         +getDaftarMatkulLulus() String[]
-        +lihatKHS(int semester) void
-        +terimaNotifikasi(String pesan) void
     }
 
     class Dosen {
         -String nidn
         +getNidn() String
-        +inputNilai(Enrollment enrollment, float nilaiAngka) void
-        +lihatJadwalMengajar() void
-        +verifikasiKRS(Enrollment enrollment) void
-        +terimaNotifikasi(String pesan) void
+        +verifikasiRencanaStudi(String krsId, boolean disetujui) boolean
+        +inputNilaiMahasiswa(String enrollmentId, float nilaiAngka) boolean
     }
 
     class Admin {
         -String staffId
         +getStaffId() String
-        +kelolaJadwal(Schedule jadwal) void
-        +verifikasiPMB(CalonMahasiswa calon) void
-        +validasiPembayaran(Payment payment) void
         +kelolaAkunUser(User user) void
-        +cetakTranskripResmi(Object recordAkademik) void
     }
 
     class CalonMahasiswa {
@@ -145,10 +168,7 @@ classDiagram
         -String statusSeleksi
         +getNomorPendaftaran() String
         +getStatusSeleksi() String
-        +daftarSeleksi() void
-        +lihatPengumuman() String
-        +konversiKeMahasiswa(String nimBaru, String prodi) Mahasiswa
-        +terimaNotifikasi(String subjek, String pesan) void
+        +setStatusSeleksi(String status) void
     }
 
     class Course {
@@ -158,8 +178,6 @@ classDiagram
         +getKode() String
         +getNama() String
         +getSks() int
-        +tambahPrasyarat(Course course) void
-        +cekPrasyarat(String[] kodeMatkulLulus) boolean
     }
 
     class Enrollment {
@@ -170,10 +188,6 @@ classDiagram
         +getTahunAkademik() String
         +getStatus() String
         +setStatus(String status) void
-        +getSks() int
-        +ajukanKRS() void
-        +batalkanKRS() void
-        +cekBentrokJadwal(Enrollment other) boolean
     }
 
     class Schedule {
@@ -185,7 +199,6 @@ classDiagram
         +getJamMulai() String
         +getJamSelesai() String
         +getRuangan() String
-        +cekBentrok(Schedule other) boolean
     }
 
     class Grade {
@@ -193,8 +206,7 @@ classDiagram
         -String nilaiHuruf
         +getNilaiAngka() float
         +getNilaiHuruf() String
-        +hitungNilaiHuruf() String
-        +updateNilai(float nilaiAngka) void
+        +setNilai(float nilaiAngka, String nilaiHuruf) void
     }
 
     class Payment {
@@ -202,66 +214,124 @@ classDiagram
         -double jumlah
         -String tanggalBayar
         -String status
-        +getSemester() int
         +getJumlah() double
-        +getTanggalBayar() String
         +getStatus() String
         +setStatus(String status) void
-        +prosesPembayaran(int semester, double jumlah) void
-        +hitungDendaKeterlambatan(int hariTerlambat) double
-        +cekStatusSPP() boolean
     }
 
-    class KRSManager {
-        +submitKRS(String mahasiswaId, String[] daftarMatkul) boolean
-        +ajukanRevisiKRS(String mahasiswaId, String[] daftarMatkul) boolean
-        +approveKRS(String krsId, String dosenId, boolean disetujui) boolean
-        +getDaftarKRSBimbingan(String dosenId) List
+    class Attendance {
+        -String tanggal
+        -String statusKehadiran
+        +getTanggal() String
+        +getStatusKehadiran() String
+        +setStatusKehadiran(String status) void
+    }
+
+    %% ==========================================
+    %% 3. CONCRETE VALIDATION RULES (Strategy)
+    %% ==========================================
+    class PrerequisiteRule {
+        +validate(String mahasiswaId, String[] daftarMatkul) boolean
+        +getErrorMessage() String
+    }
+
+    class MaxCreditRule {
+        -int batasSKS
+        +validate(String mahasiswaId, String[] daftarMatkul) boolean
+        +getErrorMessage() String
+    }
+
+    class ScheduleConflictRule {
+        +validate(String mahasiswaId, String[] daftarMatkul) boolean
+        +getErrorMessage() String
+    }
+
+    %% ==========================================
+    %% 4. CONCRETE NOTIFICATION CHANNELS
+    %% ==========================================
+    class EmailChannel {
+        +send(String recipient, String message) boolean
+    }
+
+    class PushNotificationChannel {
+        +send(String recipient, String message) boolean
+    }
+
+    %% ==========================================
+    %% 5. MODULAR SERVICES (SRP per Modul)
+    %% ==========================================
+    class PMBService {
+        -NotificationService notifier
+        +daftar(String dataDiri, Object berkas) String
+        +verifikasiBerkas(String noPendaftaran) boolean
+        +nyatakanLulus(String noPendaftaran, String prodi) Mahasiswa
+    }
+
+    class KRSService {
+        -KRSValidator validator
+        -NotificationService notifier
+        +submitKRS(PengisiKRS mhs, String[] daftarMatkul) boolean
+        +ajukanRevisiKRS(PengisiKRS mhs, String[] daftarMatkul) boolean
+        +prosesPersetujuan(PenyetujuKRS dosen, String krsId, boolean disetujui) boolean
     }
 
     class KRSValidator {
-        +validateKRS(String mahasiswaId, String[] daftarMatkul) boolean
-        +hitungTotalSKS(String[] daftarMatkul) int
-        +cekBentrokJadwal(Schedule[] daftarJadwal) boolean
+        -ValidationRule[] rules
+        +registerRule(ValidationRule rule) void
+        +validateAll(String mahasiswaId, String[] daftarMatkul) boolean
+        +getErrors() List
     }
 
-    class PMBService {
-        +daftar(String dataDiri, Object dokumenBerkas) String
-        +verifikasiBerkas(String noPendaftaran) Object
-        +nyatakanLulus(String noPendaftaran, String prodi) boolean
-        +tolakBerkas(String noPendaftaran, String alasan) boolean
+    class JadwalService {
+        +buatJadwal(Course course, Schedule schedule, Dosen pengajar) boolean
+        +cekBentrok(Schedule s1, Schedule s2) boolean
+        +getJadwalMahasiswa(String nim) List
+        +getJadwalDosen(String nidn) List
     }
 
-    class UserFactory {
-        +createMahasiswa(String noPendaftaran, String prodi) Mahasiswa
-        +generateNIM(String prodi, int tahunMasuk) String
-        +createAkunUser(String username, String defaultPassword) User
+    class NilaiService {
+        +inputNilai(Penilai dosen, String enrollmentId, float nilaiAngka) boolean
+        +hitungNilaiHuruf(float nilaiAngka) String
+        +hitungIPK(String nim) double
+        +generateTranskrip(String nim) Object
     }
 
-    class Repository {
-        +getPrasyarat(String kodeMK) String[]
-        +getRiwayatLulus(String mahasiswaId) String[]
-        +getJadwalKuliah(String[] daftarMatkul) Schedule[]
-        +saveKRS(String krsId, String status) boolean
-        +simpanPendaftaran(CalonMahasiswa calon) String
-        +getBerkasPendaftaran(String noPendaftaran) Object
-        +simpanMahasiswaBaru(Mahasiswa mhs) boolean
-        +updateStatusPMB(String noPendaftaran, String status) boolean
-        +getTagihanSPP(String mahasiswaId, int semester) Payment
-        +simpanGrade(String enrollmentId, Grade grade) boolean
-        +logError(String pesan, String id) void
+    class KeuanganService {
+        +buatTagihanSPP(String nim, int semester, double nominal) Payment
+        +prosesPembayaran(String paymentId, double jumlahBayar) boolean
+        +hitungDenda(String paymentId) double
+        +validasiStatusLunas(String nim, int semester) boolean
+    }
+
+    class PresensiService {
+        +catatKehadiran(String enrollmentId, Attendance attendance) boolean
+        +hitungPersentaseKehadiran(String enrollmentId) double
     }
 
     class NotificationService {
-        +kirimNotifikasiAsync(String penerimaId, String pesan) void
-        +kirimEmail(String email, String subjek, String pesan) boolean
-        +retryKirimEmail(String email, String subjek, String pesan, int attempt) boolean
+        -NotificationChannel channel
+        +setChannel(NotificationChannel channel) void
+        +kirimNotifikasi(String penerima, String pesan) boolean
     }
 
+    %% ==========================================
+    %% 6. RELASI, IMPLEMENTASI, & INJEKSI
+    %% ==========================================
     User <|-- Mahasiswa
     User <|-- Dosen
     User <|-- Admin
     User <|-- CalonMahasiswa
+
+    PengisiKRS <|.. Mahasiswa
+    PenyetujuKRS <|.. Dosen
+    Penilai <|.. Dosen
+
+    ValidationRule <|.. PrerequisiteRule
+    ValidationRule <|.. MaxCreditRule
+    ValidationRule <|.. ScheduleConflictRule
+
+    NotificationChannel <|.. EmailChannel
+    NotificationChannel <|.. PushNotificationChannel
 
     Mahasiswa "1" *-- "0..*" Enrollment : memiliki
     Enrollment "1" *-- "0..1" Grade : memiliki
@@ -271,19 +341,20 @@ classDiagram
     Schedule "1" --> "0..*" Enrollment : diikuti
     Dosen "1" --> "0..*" Schedule : mengajar
     Course "0..*" --> "0..*" Course : prasyarat
-    CalonMahasiswa "1" --> "0..1" Mahasiswa : diterimaSebagai
+    Enrollment "1" *-- "0..*" Attendance : mencatat
 
-    KRSManager --> KRSValidator : delegasi validasi
-    KRSManager --> Repository : persistensi
-    KRSManager --> NotificationService : memicu notifikasi
-    KRSValidator --> Repository : query aturan
-    PMBService --> UserFactory : delegasi pembuatan
-    PMBService --> Repository : persistensi
+    KRSService --> KRSValidator : delegasi validasi
+    KRSService --> NotificationService : memicu notifikasi
+    KRSService ..> PengisiKRS : depends on role interface
+    KRSService ..> PenyetujuKRS : depends on role interface
+    KRSValidator o--> ValidationRule : agregasi aturan validasi (DIP)
+
+    NilaiService ..> Penilai : depends on role interface
+    NotificationService o--> NotificationChannel : injeksi kanal (DIP)
     PMBService --> NotificationService : memicu notifikasi
-    UserFactory ..> Mahasiswa : instansiasi
-    Admin --> PMBService : mengelola kelulusan
-    Mahasiswa ..> KRSManager : mengirim permohonan
-    Dosen ..> KRSManager : menyetujui
+    KeuanganService ..> Payment : mengelola tagihan
+    JadwalService ..> Schedule : mengelola sesi
+    PresensiService ..> Attendance : mengelola kehadiran
 ```
 
 ---

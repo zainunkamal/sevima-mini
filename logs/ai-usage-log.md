@@ -270,3 +270,36 @@
 - **Plan:** Mengadopsi Opsi A secara terstruktur dengan mengekspansi Class Diagram ke Versi 5, menyelaraskan nama aktor dan method, serta menutup celah use case yang belum memiliki sequence diagram.
 - **Act:** Memperbarui kode Mermaid dan PlantUML, merender 7 diagram beresolusi tinggi, dan menyinkronkan seluruh dokumentasi teknis proyek.
 - **Reflect:** Model sistem perangkat lunak yang matang harus memiliki koherensi vertikal (antar-lapisan arsitektur) dan horizontal (antar-sudut pandang UML: struktural, fungsional, dan perilaku interaksi).
+
+---
+
+### Prompt #5 (versi: Refactor Arsitektur SOLID Penuh - Versi 6)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Melakukan audit kritis dan refactoring class diagram SEVIMA Mini terhadap prinsip SOLID, mengeliminasi God Object `Admin`, memecah layanan spesifik per modul, mengimplementasikan antarmuka peran (*role-based interfaces*), serta menerapkan *Strategy Pattern* (`ValidationRule`) dan abstraksi kanal notifikasi (`NotificationChannel`) berbasis *Dependency Injection*.
+- **Prompt:**
+  ```text
+  Audit class diagram berikut terhadap prinsip SOLID, fokus pada
+  Single Responsibility dan Dependency Inversion:
+
+  Identifikasi kelas yang punya terlalu banyak tanggung jawab (God Object).
+  Usulkan pemecahan menjadi service per modul: PMBService, KRSService +
+  KRSValidator, JadwalService, NilaiService, KeuanganService, PresensiService, NotificationService. Gunakan interface kecil sesuai peran (mis. PengisiKRS, PenyetujuKRS, Penilai), NotificationChannel, dan
+  ValidationRule, dengan dependency injection.
+  Output: 
+  (1) tabel temuan: kelas | pelanggaran | prinsip SOLID,
+  (2) class diagram hasil refactor dalam Mermaid, 
+  (3) alasan singkat tiap perubahan.
+  ```
+- **Output ringkas:** Kode sumber Mermaid Versi 6 tersimpan di [class-diagram.mmd](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.mmd), dokumentasi teknis di [class-diagram.md](file:///home/zainun/git/istn/sevima-mini/diagram/class-diagram.md), dan bukti visual tangkapan layar di [class_diagram_versi_6.png](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02/class_diagram_versi_6.png).
+- **Keputusan Arsitektur Utama:**
+  1. Pemecahan God Object `Admin` & `Mahasiswa`: Logika operasional didelegasikan ke 7 service spesifik modul (`PMBService`, `KRSService`, `JadwalService`, `NilaiService`, `KeuanganService`, `PresensiService`, `NotificationService`).
+  2. Penerapan *Interface Segregation Principle* (ISP) & *Dependency Inversion Principle* (DIP) melalui antarmuka peran: `PengisiKRS`, `PenyetujuKRS`, `Penilai`.
+  3. Pemisahan aturan validasi dengan *Strategy Pattern* (`ValidationRule`) dan abstraksi komunikasi (`NotificationChannel`).
+  4. Entitas domain bersih (*Clean POCO / High Cohesion*) bebas dari logika komputasi operasional.
+- **Commit terkait:** `fefffa3` - `feat: refactor class diagram to version 6 adhering to full SOLID principles` [AI-assisted]
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Meskipun sistem sudah memiliki lapisan service, kelas `Admin` dan entitas `Mahasiswa` masih menanggung beban tanggung jawab berlebih (God Object & bloated entities), sementara validasi dan notifikasi belum terabstraksi dengan Dependency Inversion.
+- **Plan:** Memecah tanggung jawab ke service modular berbasis modul akademik, mendefinisikan antarmuka peran ramping, serta menerapkan pola Strategy dan Inversion of Control.
+- **Act:** Mengimplementasikan Class Diagram Versi 6 dalam Mermaid, merender screenshot beresolusi tinggi (700 KB), memperbarui spesifikasi teknis dan dokumentasi perbaikan.
+- **Reflect:** Penerapan prinsip SOLID secara ketat mengubah arsitektur monolitik prosedural menjadi sistem berorientasi objek yang fleksibel (*extensible*), mudah diuji (*testable*), dan siap diadopsi dalam skala produksi.

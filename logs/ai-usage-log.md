@@ -786,6 +786,53 @@
 - **Act:** Mengimplementasikan `tests/conftest.py`, `tests/test_pmb_pytest.py`, `pytest.ini`, memverifikasi seluruh 45 pengujian lolos dalam 2.5 detik, serta memperbarui dokumentasi proyek dan log AI.
 - **Reflect:** Pengujian otomatis yang baik tidak hanya memvalidasi fungsionalitas dasar, tetapi harus mampu membuktikan integritas non-fungsional (seperti invariansi counter konkurensi pada operasi idempotent) dengan kode tes yang bersih, deklaratif, dan mudah dipelihara.
 
+---
+
+### Prompt #6 (versi: V6 - Perbaikan Arsitektur Konkurensi Database: Mitigasi Gap-Lock Deadlock, Atomic Upsert, Transaksi Konsisten, & Self-Healing Idempotensi)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Menindaklanjuti hasil tinjauan kritis mendalam terhadap kelemahan konkurensi, race condition, batas transaksi, dan locking database pada fungsi `generate_nim` dan endpoint approval PMB:
+  1. Mengeliminasi celah Gap-Lock Deadlock (InnoDB MySQL Error 1213) saat baris counter pertama dibuat secara konkuren dengan menerapkan atomic native UPSERT (`INSERT ... ON DUPLICATE KEY UPDATE` / `ON CONFLICT DO NOTHING`) sebelum pemanggilan `SELECT ... FOR UPDATE`.
+  2. Menegakkan urutan penguncian global yang seragam (`CalonMahasiswa` -> `NimCounter`) dan menunda pemanggilan `generate_nim` ke milidetik terakhir sebelum commit untuk meminimalkan durasi lock contention.
+  3. Menyediakan fleksibilitas batas transaksi (`auto_commit: bool = True`) pada `PMBService.approve` dan `PMBService.reject` untuk mendukung composability dalam batch unit-of-work.
+  4. Menerapkan pola *self-healing* pada alur idempotensi approval jika mendeteksi calon berstatus `approved` namun `nim` kosong (`None`).
+  5. Memperbaiki dan menstabilkan mekanisme retry loop hingga 3 kali dengan exponential backoff dan rollback atomik.
+- **Prompt:**
+  ```text
+  Tinjau kode generate_nim dan endpoint approve di atas. Sebutkan kelemahan
+  terbesar yang berkaitan dengan: race condition, idempotency, batas transaksi
+  (commit di tempat yang benar), penggunaan threading.Lock yang keliru untuk
+  multi-worker, perbedaan locking SQLite vs MySQL, dan celah saat dua admin
+  membuat baris counter pertama bersamaan. Urutkan dari yang paling berisiko.
+  Jangan memperbaiki dulu, hanya kritik.
+
+  [Dilanjutkan instruksi pengguna:]
+  oke kamu perbaiki terkait masalah diatas, kemudian commit dan save ai-usage-log
+  ```
+- **Output ringkas:**
+  1. Refactoring fungsi `generate_nim` pada [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py):
+     - Menambahkan inisialisasi native atomic UPSERT berbasis dialek SQL (`mysql_insert.on_duplicate_key_update` pada MySQL dan `sqlite_insert.on_conflict_do_nothing` pada SQLite) sebelum eksekusi `select(NimCounter)...with_for_update()`.
+     - Memastikan kueri `FOR UPDATE` hanya mengambil *Record Lock* murni pada baris yang sudah terdaftar, secara permanen melenyapkan celah Gap-Lock Deadlock (MySQL Error 1213).
+  2. Peningkatan arsitektur pada `PMBService.approve` & `PMBService.reject` di [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py):
+     - Parameter opsional `auto_commit: bool = True` untuk kontrol transaksi fleksibel.
+     - Penataan urutan penguncian: `CalonMahasiswa` dikunci di awal, validasi eksistensi dan kode prodi dieksekusi secara *fail-fast*, lalu `generate_nim` dikunci dan dieksekusi tepat sebelum commit/flush.
+     - Pengecekan idempotensi disempurnakan dengan *self-healing*: `if calon.status == StatusPMB.APPROVED and calon.nim: return calon`. Jika `nim` kosong, alur menerbitkan NIM dan memulihkan konsistensi data.
+     - Penyesuaian retry loop agar selalu mencoba penuh hingga `max_retries` kali (3 kali) sebelum melemparkan HTTP 409 Conflict.
+  3. Penambahan skenario uji unit otomatis baru pada [tests/test_state_machine.py](file:///home/zainun/git/istn/sevima-mini/tests/test_state_machine.py):
+     - `test_10_approve_self_healing_when_approved_without_nim`: Memverifikasi pemulihan otomatis data anomali status approved tanpa NIM.
+  4. Verifikasi seluruh suite pengujian proyek: **46/46 tests passed pada pytest** dan **39/39 tests passed pada unittest**.
+  5. Pembaruan dokumentasi komprehensif analisis konkurensi di [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Atomic Pre-Insert / Upsert Sebelum Record Locking:** Mencegah terjadinya Gap Lock di MySQL InnoDB ketika kueri `FOR UPDATE` menyasar nilai PK yang belum ada di tabel. Dengan memastikan baris sudah ada via atomic upsert, lock yang terbentuk di InnoDB adalah Record Lock murni (X-Lock), melenyapkan kemungkinan deadlock antar-insert intention locks.
+  2. **Consistent Lock Ordering & Short Lock Duration:** Menghindari *deadlock cycle* dengan menegakkan hierarki kunci: induk data pendaftar (`CalonMahasiswa`) dikunci pertama kali, diikuti baris counter urutan (`NimCounter`) tepat sebelum transaksi diakhiri.
+  3. **Resilient Data Self-Healing:** Melindungi sistem dari anomali data riil di produksi (seperti kegagalan transaksi lama yang meninggalkan record tanpa nomor urut) dengan secara aktif memperbaiki inkonsistensi saat operasi approve dipanggil ulang.
+- **Commit terkait:** `7377bf9` - `fix(pmb): resolve critical concurrency flaws, gap-lock deadlock, and self-healing idempotency [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Tinjauan mendalam membuktikan bahwa penguncian record non-eksis pada MySQL InnoDB memicu Gap Locking yang rentan memicu deadlock (MySQL Error 1213) jika dua worker concurrent menginisialisasi counter prodi baru bersamaan. Selain itu, pengecekan idempotensi yang naif tidak mampu memulihkan pendaftar berstatus approved tanpa NIM.
+- **Plan:** Mengimplementasikan atomic native UPSERT sebelum pemanggilan row lock, menata ulang urutan penguncian dan meminimalkan durasi tahan lock, menambahkan kemampuan self-healing data pada idempotensi, menyediakan opsi `auto_commit` untuk composability unit of work, serta menambahkan unit test pembuktian.
+- **Act:** Memodifikasi `app/services/pmb.py`, memperluas `tests/test_state_machine.py`, memvalidasi seluruh 46 unit test lolos tanpa error, mendokumentasikan analisis perbaikan pada Bagian 9 dokumen Minggu 4, serta menyusun catatan log transparansi AI.
+- **Reflect:** Menghadapi beban kerja multi-worker dengan konkurensi tinggi membutuhkan pemahaman mendalam tentang semantik locking mesin basis data relasional (perbedaan Gap Lock vs Record Lock di InnoDB). Arsitektur yang tangguh mengombinasikan pencegahan di level SQL (atomic upsert) dan pertahanan di level aplikasi (self-healing idempotency & resilient retry loops).
+
 
 
 

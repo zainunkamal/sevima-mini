@@ -439,3 +439,27 @@
 - **Plan:** Memisahkan tanggung jawab secara tegas menggunakan arsitektur berlapis, merancang DTO protektif (tanpa atribut sensitif), mengimplementasikan proteksi ganda (query check + exception interceptor), serta menimpa exception handler bawaan FastAPI.
 - **Act:** Mengimplementasikan kode per berkas (`schemas/pmb.py`, `services/pmb.py`, `routers/pmb.py`, `main.py`), menambahkan automated tests dengan `TestClient`, serta mendokumentasikan matriks status code pada folder perbaikan.
 - **Reflect:** Kombinasi validasi deklaratif Pydantic di pintu masuk API, verifikasi referensial di lapisan service, dan constraint unik di level basis data membentuk pertahanan berlapis (*defense in depth*) yang kokoh, aman, dan berorientasi pada pengalaman pengguna yang baik (*clean DX/UX*).
+
+---
+
+### Prompt #3 (versi: V3 - Prosedur Pengujian Swagger UI OpenAPI & Seeder Data Awal)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Menyediakan skrip pengisian data awal (*seeding*), panduan eksekusi server Uvicorn, dan prosedur pengujian interaktif antarmuka Swagger UI OpenAPI untuk modul PMB.
+- **Prompt:**
+  ```text
+  cara testnya gmn agar saya bisa check via swagger
+  ```
+- **Output ringkas:**
+  1. Skrip *seeder* otomatis di [app/seed.py](file:///home/zainun/git/istn/sevima-mini/app/seed.py) yang memuat data awal Program Studi (TIF, SIF, ARS, TEK) dan Jalur Masuk (SNBP, SNBT, Mandiri) untuk mencegah *foreign key error* saat pengujian manual.
+  2. Panduan menjalankan server pengembangan Uvicorn menggunakan *virtual environment* lokal: `uvicorn app.main:app --reload --port 8000`.
+  3. Prosedur pengujian interaktif melalui antarmuka Swagger UI di `http://127.0.0.1:8000/docs` lengkap dengan skenario uji payload valid (HTTP 201), validasi regex & panjang string (HTTP 400), serta email duplikat (HTTP 409).
+- **Keputusan Arsitektur Utama:**
+  - Swagger UI terintegrasi langsung melalui OpenAPI spec bawaan FastAPI (`/openapi.json`), mendokumentasikan skema input `RegisterRequest` dan skema output `PendaftarOut` secara otomatis dari model Pydantic.
+  - Skrip *seeder* mandiri memastikan lingkungan lokal siap pakai tanpa perlu input data SQL manual.
+- **Commit terkait:** `pending` - `feat(docs): add seed script, Swagger UI testing guide, and update AI usage log [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Pengujian endpoint yang memiliki ketergantungan relasi *foreign key* (seperti `program_studi_id` dan `jalur_masuk_id`) membutuhkan data referensi valid pada basis data agar tidak menghasilkan error validasi bisnis saat diuji melalui UI Swagger.
+- **Plan:** Menyediakan skrip *seeder* idempotens yang mengisi data awal Program Studi dan Jalur Masuk jika belum tersedia, serta menyusun panduan langkah demi langkah menjalankan Uvicorn dan menguji skenario positif/negatif pada Swagger UI.
+- **Act:** Mengimplementasikan berkas `app/seed.py`, mengeksekusi seeding ke database `sevima_mini.db`, memverifikasi endpoint `/docs` menghasilkan respons HTTP 200, dan mencatat dokumentasi ke dalam log AI.
+- **Reflect:** Menyertakan instrumen data awal (*seed data*) dan dokumentasi Swagger yang interaktif sangat menyederhanakan siklus pengujian (*Developer Experience*) bagi pengembang maupun tim penguji QA.

@@ -1,12 +1,12 @@
-# Dokumentasi Implementasi Minggu 3: Modul PMB (SQLAlchemy 2.0 & Alembic)
+# Dokumentasi Implementasi Minggu 3: Modul PMB (SQLAlchemy 2.0, Alembic, & FastAPI)
 
-Dokumen ini mencatat keputusan teknis, arsitektur skema basis data, dan implementasi modul PMB (*Penerimaan Mahasiswa Baru*) pada sistem informasi akademik **SEVIMA Mini** untuk iterasi **Minggu 3**.
+Dokumen ini mencatat keputusan teknis, arsitektur skema basis data, dan implementasi endpoint API modul PMB (*Penerimaan Mahasiswa Baru*) pada sistem informasi akademik **SEVIMA Mini** untuk iterasi **Minggu 3**.
 
 ---
 
-## 📌 Ringkasan Implementasi
+## 📌 Bagian 1: Skema Basis Data & Migrasi Terkelola
 
-Pada Minggu 3, dilakukan penerjemahan desain struktural PMB ke dalam skema basis data fisik menggunakan **SQLAlchemy 2.0** (`Mapped` dan `mapped_column`) serta migrasi terkelola dengan **Alembic** pada basis data **SQLite**.
+Pada iterasi awal Minggu 3, dilakukan penerjemahan desain struktural PMB ke dalam skema basis data fisik menggunakan **SQLAlchemy 2.0** (`Mapped` dan `mapped_column`) serta migrasi terkelola dengan **Alembic** pada basis data **SQLite**.
 
 ### 1. Entitas & Relasi
 1. **`program_studi`**:
@@ -31,10 +31,7 @@ Pada Minggu 3, dilakukan penerjemahan desain struktural PMB ke dalam skema basis
    - `created_at`: DateTime(timezone=True), server_default NOW.
    - `approved_at`: DateTime(timezone=True), nullable.
 
----
-
-## 🏛️ Keputusan Arsitektural & Integritas Basis Data
-
+### 2. Keputusan Arsitektural Basis Data
 1. **Penegakan `PRAGMA foreign_keys = ON;` pada SQLite:**
    - Secara default SQLite menonaktifkan integritas foreign key per koneksi.
    - Diaktifkan secara persisten melalui SQLAlchemy event listener `@event.listens_for(Engine, "connect")` pada `app/database.py` dan pada konfigurasi migrasi `app/alembic/env.py`.
@@ -44,3 +41,61 @@ Pada Minggu 3, dilakukan penerjemahan desain struktural PMB ke dalam skema basis
 3. **Pemisahan Tanggung Jawab Constraint (Database vs Aplikasi):**
    - **Database:** Menjamin batas memori/panjang karakter (`VARCHAR(20)`), integritas referensial FK, keunikan (*Unique Index*), serta konsistensi state dasar via `CHECK (status IN ('pending', 'approved', 'rejected'))`.
    - **Aplikasi:** Melakukan validasi format regex nomor telepon (misal: format internasional/E.164), sanitasi email, dan orkestrasi transisi state approval (penerbitan NIM dan pengisian `approved_at`).
+
+---
+
+## 📌 Bagian 2: Implementasi Endpoint Pendaftaran PMB (`POST /api/pmb/register`)
+
+Endpoint pendaftaran calon mahasiswa baru dibangun menggunakan **FastAPI** dengan mematuhi prinsip *Layered Architecture* (Clean Architecture):
+
+### 1. Skema DTO & Perlindungan Privasi (`app/schemas/pmb.py`)
+- **`RegisterRequest`**:
+  - `nama_lengkap`: Minimal 3 karakter (`min_length=3`).
+  - `email`: Format email valid menggunakan `EmailStr`.
+  - `phone`: Regex nomor HP Indonesia (`^(\+62|62|08)[0-9]{7,13}$`).
+  - `tanggal_lahir`: Opsional (`date`).
+  - `alamat`: Opsional (`str`).
+  - `program_studi_id` & `jalur_masuk_id`: Wajib lebih besar dari 0 (`gt=0`).
+- **`PendaftarOut`**:
+  - Menyajikan data status pendaftaran: `id`, `nama_lengkap`, `email`, `phone`, `program_studi_id`, `jalur_masuk_id`, `status`, `nim`, `created_at`, `approved_at`.
+  - **Prinsip Keamanan Privasi Data:** Atribut sensitif seperti `alamat` dan `tanggal_lahir` secara sengaja **tidak disertakan** pada skema respons publik.
+
+### 2. Lapisan Layanan & Anti Race-Condition (`app/services/pmb.py`)
+- Melakukan verifikasi eksistensi ganda:
+  1. *Pre-check query* untuk memastikan email belum terdaftar (respons instan HTTP 409).
+  2. Verifikasi eksistensi `program_studi` dan `jalur_masuk` di database (respons HTTP 400 jika tidak ditemukan).
+- Menangani *race condition*:
+  - Saat dua permintaan pendaftaran konkuren dengan email identik lolos *pre-check* pada milidetik yang sama, transaksi dicegat oleh *Unique Index* basis data.
+  - Blok `try ... except IntegrityError` menangkap *exception* basis data, melakukan `db.rollback()`, dan mengembalikan HTTP 409 yang ramah pengguna tanpa membocorkan pesan mentah SQL.
+
+### 3. Router Tipis & Dependency Injection (`app/routers/pmb.py`)
+- Router bertindak sebagai *thin controller* murni yang hanya mendeklarasikan rute, status kode sukses HTTP 201, skema respons, dan menginjeksi sesi database menggunakan `get_db` generator (`yield` + `finally: db.close()`).
+
+### 4. Transformasi Error Validasi Terpusat (`app/main.py`)
+- Secara *default*, FastAPI merespons `RequestValidationError` dengan kode HTTP 422 Unprocessable Entity dan struktur error mentah Pydantic.
+- Dibuat handler khusus `@app.exception_handler(RequestValidationError)` untuk:
+  - Mengubah kode status menjadi **HTTP 400 Bad Request**.
+  - Mengonversi pesan teknis menjadi pesan humanis bahasa Indonesia yang terstruktur tanpa memunculkan *stack trace*.
+
+---
+
+## 📊 Matriks Kode Status HTTP Endpoint `/api/pmb/register`
+
+| Kasus Uji | Kode Status HTTP | Keterangan Respon |
+| :--- | :--- | :--- |
+| **Pendaftaran Sukses** | `201 Created` | Data pendaftar berhasil dibuat berstatus `pending`, menyembunyikan alamat & tanggal lahir. |
+| **Email Ganda (Pre-check & Race Condition)** | `409 Conflict` | `"Email sudah terdaftar. Silakan gunakan alamat email lain."` |
+| **Program Studi Tidak Ada** | `400 Bad Request` | `"Program studi dengan ID <id> tidak ditemukan."` |
+| **Jalur Masuk Tidak Ada** | `400 Bad Request` | `"Jalur masuk dengan ID <id> tidak ditemukan."` |
+| **Nama < 3 Karakter** | `400 Bad Request` | `"nama_lengkap: Panjang minimal adalah 3 karakter"` |
+| **Format Email Tidak Valid** | `400 Bad Request` | `"email: Format alamat email tidak valid"` |
+| **Format No. HP Ilegal** | `400 Bad Request` | `"phone: Format nomor HP tidak valid (harus nomor Indonesia dengan awalan 08, 62, atau +62)"` |
+| **ID Prodi / Jalur <= 0** | `400 Bad Request` | `"program_studi_id: Nilai harus lebih besar dari 0"` |
+
+---
+
+## 🧪 Bukti Pengujian Otomatis
+
+Seluruh fungsionalitas telah divalidasi melalui 2 berkas pengujian otomatis:
+1. [test_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb.py): Menguji 7 skenario integritas skema basis data SQLite dan constraint.
+2. [test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py): Menguji 5 skenario endpoint FastAPI menggunakan `TestClient` (HTTP 201, 409, 400 referensi, dan 400 format validasi).

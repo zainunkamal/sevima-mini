@@ -391,3 +391,51 @@
 - **Plan:** Menyusun konfigurasi SQLAlchemy 2.0 murni (`DeclarativeBase`, `Mapped`, `mapped_column`), menambahkan event listener koneksi engine SQLite, mengonfigurasi batch mode pada Alembic, dan merancang skema yang membagi peran validasi secara seimbang antara database dan domain aplikasi.
 - **Act:** Mengimplementasikan kode per berkas secara modular (`app/database.py`, `app/models/pmb.py`, `alembic.ini`, `alembic/env.py`, skrip migrasi), mendokumentasikan spesifikasi di README Minggu 3, dan menyinkronkan struktur proyek.
 - **Reflect:** Menegakkan aturan integritas pada level yang tepat (skema fisik di database, aturan format & siklus hidup bisnis di aplikasi) menghasilkan sistem yang tangguh, mencegah korupsi data, sekaligus menjaga efisiensi komputasi basis data.
+
+---
+
+### Prompt #2 (versi: V2 - Implementasi Endpoint Pendaftaran PMB FastAPI & Layered Architecture)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Membangun endpoint `POST /api/pmb/register` menggunakan FastAPI berbasis *Layered Architecture* (Router, Service, Schema/DTO, Model), menerapkan pencegahan *race condition* konkurensi email ganda, mengamankan privasi data pendaftar, dan merestrukturisasi penanganan error validasi menjadi HTTP 400 ramah pengguna.
+- **Prompt:**
+  ```text
+  Anda adalah backend engineer Python senior.
+
+  Konteks: berikut model SQLAlchemy dan struktur folder project saya
+  (app/models, app/schemas, app/services, app/routers, app/database.py):
+  [TEMPEL KODE MODEL + STRUKTUR FOLDER]
+
+  Buat endpoint POST /api/pmb/register dengan FastAPI:
+  - Skema Pydantic RegisterRequest: nama_lengkap minimal 3 karakter, email
+    (EmailStr), phone (regex nomor HP Indonesia: awalan 08, 62, atau +62),
+    tanggal_lahir, alamat, program_studi_id dan jalur_masuk_id lebih dari 0.
+  - Skema respons PendaftarOut (jangan bocorkan alamat dan tanggal lahir).
+  - Service: cek email ganda, cek program studi dan jalur masuk ada, simpan
+    dengan status pending, tangani IntegrityError (race condition email).
+  - Router tipis dengan dependency injection get_db (yield + finally).
+  - Status code: 201 sukses, 409 email ganda, 400 referensi tidak valid,
+    error validasi format -> 400 (ubah handler RequestValidationError).
+  - Pesan error ramah; jangan kirim stack trace atau pesan DB mentah.
+
+  Format output: kode per file, tanpa penjelasan panjang.
+  ```
+- **Output ringkas:**
+  1. Generator dependency injection `get_db` pada [app/database.py](file:///home/zainun/git/istn/sevima-mini/app/database.py) dengan *lifecycle yield-finally* penutupan koneksi sesi.
+  2. DTO validasi Pydantic v2 di [app/schemas/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/schemas/pmb.py) mencakup `RegisterRequest` (regex nomor HP `^(\+62|62|08)[0-9]{7,13}$`, panjang string, validasi email, `gt=0`) serta `PendaftarOut` yang menyaring atribut privat (`alamat` dan `tanggal_lahir`).
+  3. Lapisan *domain service* di [app/services/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/services/pmb.py) dengan verifikasi eksistensi referensi foreign key serta blok pencegat *race condition* `try-except IntegrityError` (HTTP 409).
+  4. Pengendali tipis (*thin router*) di [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py) mendeklarasikan rute `POST /api/pmb/register` dengan respons `status_code=201`.
+  5. Pengendali exception terpusat di [app/main.py](file:///home/zainun/git/istn/sevima-mini/app/main.py) yang menimpa `RequestValidationError` bawaan FastAPI menjadi respons HTTP 400 Bad Request dengan pesan humanis terstruktur.
+  6. Suite pengujian endpoint otomatis di [tests/test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py) mencakup seluruh skenario validasi, status code, dan penyaringan privasi data.
+  7. Pembaruan dokumentasi perbaikan Minggu 3 pada [perbaikan/minggu-03/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-03/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Separation of Concerns (SoC):** Router hanya mengelola rute HTTP dan dependency injection, service memegang seluruh aturan transaksi dan orkestrasi integritas data, sedangkan schema mengelola serialisasi/deserialisasi.
+  2. **Mitigasi Race Condition Konkurensi:** Pengecekan `db.query().filter().first()` rentan terhadap *time-of-check to time-of-use* (TOCTOU). Penambahan penanganan `IntegrityError` saat `db.commit()` menjamin keunikan email tetap aman pada level basis data.
+  3. **Privacy by Design:** `PendaftarOut` tidak mengekspos atribut identitas sensitif seperti alamat tinggal dan tanggal lahir pendaftar ke publik.
+  4. **Standarisasi Kontrak Error Client:** Menyelaraskan error validasi Pydantic ke standar HTTP 400 (bukan 422 default) agar seragam dengan penolakan referensi data tidak valid.
+- **Commit terkait:** `pending` - `feat(api): implement PMB register endpoint with validation and race condition handling [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Validasi input tidak boleh hanya mengandalkan lapisan web framework karena rawan *race condition* saat concurrent request dan rawan membocorkan *stack trace* internal basis data saat terjadi error SQL. Selain itu, FastAPI secara default menggunakan HTTP 422 untuk schema validation yang kerap tidak selaras dengan konvensi API standar (HTTP 400).
+- **Plan:** Memisahkan tanggung jawab secara tegas menggunakan arsitektur berlapis, merancang DTO protektif (tanpa atribut sensitif), mengimplementasikan proteksi ganda (query check + exception interceptor), serta menimpa exception handler bawaan FastAPI.
+- **Act:** Mengimplementasikan kode per berkas (`schemas/pmb.py`, `services/pmb.py`, `routers/pmb.py`, `main.py`), menambahkan automated tests dengan `TestClient`, serta mendokumentasikan matriks status code pada folder perbaikan.
+- **Reflect:** Kombinasi validasi deklaratif Pydantic di pintu masuk API, verifikasi referensial di lapisan service, dan constraint unik di level basis data membentuk pertahanan berlapis (*defense in depth*) yang kokoh, aman, dan berorientasi pada pengalaman pengguna yang baik (*clean DX/UX*).

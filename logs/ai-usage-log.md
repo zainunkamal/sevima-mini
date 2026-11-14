@@ -432,7 +432,7 @@
   2. **Mitigasi Race Condition Konkurensi:** Pengecekan `db.query().filter().first()` rentan terhadap *time-of-check to time-of-use* (TOCTOU). Penambahan penanganan `IntegrityError` saat `db.commit()` menjamin keunikan email tetap aman pada level basis data.
   3. **Privacy by Design:** `PendaftarOut` tidak mengekspos atribut identitas sensitif seperti alamat tinggal dan tanggal lahir pendaftar ke publik.
   4. **Standarisasi Kontrak Error Client:** Menyelaraskan error validasi Pydantic ke standar HTTP 400 (bukan 422 default) agar seragam dengan penolakan referensi data tidak valid.
-- **Commit terkait:** `pending` - `feat(api): implement PMB register endpoint with validation and race condition handling [AI-Assisted]`
+- **Commit terkait:** `32e97dd` - `docs: document PMB register endpoint implementation in perbaikan and update AI usage log [AI-Assisted]`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Validasi input tidak boleh hanya mengandalkan lapisan web framework karena rawan *race condition* saat concurrent request dan rawan membocorkan *stack trace* internal basis data saat terjadi error SQL. Selain itu, FastAPI secara default menggunakan HTTP 422 untuk schema validation yang kerap tidak selaras dengan konvensi API standar (HTTP 400).

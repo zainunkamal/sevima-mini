@@ -303,6 +303,35 @@ Untuk memenuhi standar pengujian perangkat lunak tingkat *enterprise*, dilakukan
 
 ---
 
+## 📌 Bagian 11: Standarisasi Dokumentasi OpenAPI & Integrasi Swagger UI
+
+Pada tahap akhir iterasi Minggu 4, dilakukan standarisasi dokumentasi OpenAPI pada controller router [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py) untuk menyajikan spesifikasi RESTful API yang profesional, komprehensif, dan mudah dipahami oleh pengembang klien (frontend / mobile):
+
+### 1. Pengelompokan Tag Terpadu (`tags`)
+Seluruh endpoint di bawah router PMB disatukan dalam tag deklaratif:
+```python
+router = APIRouter(prefix="/api/pmb", tags=["Penerimaan Mahasiswa Baru (PMB)"])
+```
+Hal ini memastikan antarmuka interaktif Swagger UI (`/docs`) dan ReDoc (`/redoc`) menyajikan modul PMB secara terisolasi dan rapi.
+
+### 2. Summary & Deskripsi Naratif Markdown
+Setiap endpoint dilengkapi dengan `summary` yang ringkas dan `description` mendalam berbasis Markdown yang menjabarkan aturan bisnis, batasan validasi (seperti usia 14–80 tahun dan nomor HP Indonesia), mekanisme state machine, serta jaminan idempotensi dan privasi data.
+
+### 3. Parameter `responses` untuk Error 400, 404, dan 409
+Setiap rute mendokumentasikan kemungkinan kegagalan dengan menyertakan contoh payload JSON nyata (`examples`):
+- **`HTTP 400 Bad Request`:**
+  - *Validation Error*: Contoh format nomor telepon salah dan usia di bawah 14 tahun.
+  - *Foreign Key Error*: Contoh referensi ID prodi atau jalur tidak ditemukan.
+  - *Invalid Prodi Code*: Contoh kode prodi bukan 3 karakter alfanumerik.
+  - *Quota Exceeded*: Contoh nomor urut NIM melampaui batas tahunan 9999.
+- **`HTTP 404 Not Found`:** Contoh respon pendaftar dengan ID tertentu tidak ditemukan di basis data.
+- **`HTTP 409 Conflict`:**
+  - *Duplicate Email*: Konflik email sudah terdaftar.
+  - *Terminal State Conflicts*: Penolakan approval terhadap calon berstatus `rejected`, dan penolakan reject terhadap calon berstatus `approved`.
+  - *Concurrency Conflict*: Kegagalan akibat benturan konkurensi data.
+
+---
+
 ## 🧪 Bukti Pengujian Otomatis
 
 Implementasi telah diuji secara menyeluruh melalui kombinasi suite pengujian otomatis:

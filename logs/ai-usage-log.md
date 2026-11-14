@@ -933,7 +933,7 @@
 - **Keputusan Arsitektur Utama:**
   1. **Empirical Concurrency Verification:** Menegaskan bahwa pengujian konkurensi tidak cukup hanya mengandalkan unit test mock, melainkan wajib diverifikasi secara empiris melalui *stress test* paralel multi-thread/multi-worker di lingkungan jaringan HTTP riil.
   2. **Multi-Dialect Compatibility by Environment:** Mengadopsi prinsip *Twelve-Factor App* (Konfigurasi di Environment) untuk memisahkan konfigurasi database lokal SQLite dan produksi MySQL tanpa mengubah kode inti aplikasi.
-- **Commit terkait:** `[PENDING COMMIT HASH]` - `docs(adr): create ADR-004 PDF and finalize week 4 concurrency test documentation`
+- **Commit terkait:** `c1d31af` - `docs(adr): create ADR-004 PDF and finalize week 4 concurrency test documentation`
 
 ### Refleksi (Observe - Plan - Act - Reflect)
 - **Observe:** Setelah implementasi row lock dan state machine selesai, diperlukan bukti empiris bahwa request simultan dari banyak worker tidak menghasilkan NIM kembar atau celah nomor urut loncat. Selain itu, diperlukan dukungan konfigurasi `.env` yang fleksibel untuk migrasi ke MySQL, pengorganisasian bukti visual, dan penerbitan dokumen formal ADR-004 format PDF.

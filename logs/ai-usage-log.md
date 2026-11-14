@@ -490,3 +490,28 @@
 - **Plan:** Mengonversi seluruh query menjadi `db.scalar(select())`, menginspeksi error origin database untuk diferensiasi status code, memperketat regex seluler Indonesia, serta menambahkan validasi batas usia calon mahasiswa baru.
 - **Act:** Mengedit berkas schema, service, exception handler, menambahkan test cases baru, mengeksekusi suite unit test (14/14 lolos), memperbarui dokumentasi perbaikan, dan mencatat riwayat ke log transparansi AI.
 - **Reflect:** Kode yang baik tidak hanya berhasil menjalankan *happy path*, tetapi harus mampu menangani *edge cases* integritas dan menyajikan *error reporting* yang akurat tanpa membocorkan kelemahan sistem internal.
+
+---
+
+### Prompt #5 (versi: V5 - Penanganan Kasus Tepi Regex Nomor HP & Sanitasi Input Humanis)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Menyempurnakan penanganan kasus tepi nomor telepon seluler: mendukung nomor pascabayar 9 digit lawas (`081112345`), membersihkan pemisah humanis (spasi, strip, titik, kurung) via Pydantic pre-validator, serta memperluas suite pengujian otomatis hingga 17 unit test.
+- **Prompt:**
+  ```text
+  saya mau kamu benerin terkait hal diatas, kemudian save di AI-Log dengan commit AI-Assisted
+  ```
+- **Output ringkas:**
+  1. Sanitasi otomatis karakter pemisah pada `phone` via `@field_validator("phone", mode="before")` di [app/schemas/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/schemas/pmb.py) untuk membersihkan tanda hubung, spasi, titik, dan tanda kurung.
+  2. Pembaruan pola regex menjadi `^(\+62|62|0)8[1-9][0-9]{5,10}$` yang mendukung nomor seluler 9 hingga 14 digit/karakter.
+  3. Penambahan unit test baru di [tests/test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py) untuk menguji format nomor dengan tanda hubung, nomor 9 digit lawas, dan penolakan nomor dial-up `0809` (17 unit test lolos 100%).
+  4. Pembaruan dokumentasi perbaikan di [perbaikan/minggu-03/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-03/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Resilient Input Handling:** Pengguna yang mengetik nomor dengan format humanis (`0812-3456-7890` atau `+62 812 3456 7890`) tetap dilayani secara mulus karena sistem membersihkan tanda baca sebelum validasi regex dan penyimpanan ke basis data.
+  2. **Inclusive Validation:** Kuantifier `{5,10}` mencegah terjadinya penolakan keliru (*false negative*) bagi pemegang nomor seluler lawas 9 digit tanpa membuka celah bagi nomor PSTN/bebas pulsa.
+- **Commit terkait:** `pending` - `feat(schemas): handle phone edge cases with pre-sanitizer and regex range update [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Analisis kasus tepi regex mengungkap bahwa pola ketat tanpa sanitasi memicu *false negative* pada nomor dengan spasi/strip dan nomor pascabayar 9 digit yang sah di dunia nyata.
+- **Plan:** Menambahkan pre-validator pembersih karakter sebelum validasi regex berjalan di Pydantic, melonggarkan batas minimum digit dari 6 ke 5 digit, serta memperbarui unit test.
+- **Act:** Mengimplementasikan regex `^(\+62|62|0)8[1-9][0-9]{5,10}$` dan validator `sanitize_phone_number` di `app/schemas/pmb.py`, menambahkan 3 kasus uji baru di `tests/test_api_pmb.py`, memperbarui pesan error di `app/main.py`, dan mengeksekusi 17 unit test.
+- **Reflect:** Validasi data yang ramah pengguna (*user-friendly validation*) harus bersifat *forgiving on input, strict on storage*—menerima variasi penulisan yang wajar dari manusia, membersihkannya secara otomatis, dan memastikan format yang disimpan ke basis data selalu bersih dan terstandarisasi.

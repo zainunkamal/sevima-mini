@@ -34,7 +34,7 @@ async def validation_exception_handler(
         elif "value_error" in err.get("type", "") and "email" in field_name:
             msg = "Format alamat email tidak valid"
         elif "string_pattern_mismatch" in err.get("type", ""):
-            msg = "Format nomor HP tidak valid (harus nomor Indonesia dengan awalan 08, 628, atau +628)"
+            msg = "Format nomor HP tidak valid (harus nomor Indonesia dengan awalan 08, 62, atau +62)"
         elif "greater_than" in err.get("type", ""):
             msg = "Nilai harus lebih besar dari 0"
 

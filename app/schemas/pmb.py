@@ -1,4 +1,5 @@
 from datetime import date, datetime
+import re
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -18,11 +19,11 @@ class RegisterRequest(BaseModel):
         description="Alamat email aktif calon mahasiswa",
         examples=["ahmad.fauzi@example.com"],
     )
-    # Regex nomor HP Indonesia presisi: diawali 08, 628, atau +628 diikuti digit 1-9 dan 7-11 digit berikutnya
+    # Regex nomor HP Indonesia: awalan +62, 62, atau 0, diikuti 8, digit 1-9, dan 5-10 digit berikutnya (mendukung 9-14 karakter)
     phone: str = Field(
         ...,
-        pattern=r"^(?:\+628|628|08)[1-9][0-9]{6,11}$",
-        description="Nomor HP Indonesia valid (awalan 08, 628, atau +628)",
+        pattern=r"^(\+62|62|0)8[1-9][0-9]{5,10}$",
+        description="Nomor HP Indonesia valid (awalan 08, 62, atau +62)",
         examples=["081234567890"],
     )
     tanggal_lahir: Optional[date] = Field(
@@ -47,6 +48,14 @@ class RegisterRequest(BaseModel):
         description="ID jalur masuk yang dipilih (harus > 0)",
         examples=[1],
     )
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def sanitize_phone_number(cls, v: str) -> str:
+        if isinstance(v, str):
+            # Membersihkan format humanis: spasi, tanda hubung, titik, kurung
+            return re.sub(r"[\s\-\.\(\)]", "", v.strip())
+        return v
 
     @field_validator("tanggal_lahir")
     @classmethod

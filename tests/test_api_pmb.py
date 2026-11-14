@@ -162,6 +162,45 @@ class TestPMBRegisterAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("Format nomor HP tidak valid", str(response.json()["errors"]))
 
+    def test_08_human_formatted_phone_accepted(self):
+        """Memastikan nomor HP dengan spasi atau tanda hubung dibersihkan dan diterima (HTTP 201)."""
+        payload = {
+            "nama_lengkap": "Calon Format Humanis",
+            "email": "human_phone@example.com",
+            "phone": "0812-3456-7890",  # format dengan tanda hubung
+            "program_studi_id": 1,
+            "jalur_masuk_id": 1,
+        }
+        response = self.client.post("/api/pmb/register", json=payload)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["phone"], "081234567890")
+
+    def test_09_legacy_9_digit_phone_accepted(self):
+        """Memastikan nomor pascabayar lawas 9 digit (misal kartu Halo lawas) diterima (HTTP 201)."""
+        payload = {
+            "nama_lengkap": "Pelanggan Halo Lawas",
+            "email": "halo_lawas@example.com",
+            "phone": "081112345",  # 9 digit valid
+            "program_studi_id": 1,
+            "jalur_masuk_id": 1,
+        }
+        response = self.client.post("/api/pmb/register", json=payload)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["phone"], "081112345")
+
+    def test_10_invalid_prefix_0809_rejected(self):
+        """Memastikan nomor premium call / dial-up (0809...) ditolak dengan HTTP 400."""
+        payload = {
+            "nama_lengkap": "Calon Dial Up",
+            "email": "dialup@example.com",
+            "phone": "08091234567",  # digit setelah 8 adalah 0
+            "program_studi_id": 1,
+            "jalur_masuk_id": 1,
+        }
+        response = self.client.post("/api/pmb/register", json=payload)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Format nomor HP tidak valid", str(response.json()["errors"]))
+
 
 if __name__ == "__main__":
     unittest.main()

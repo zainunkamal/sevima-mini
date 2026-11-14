@@ -97,7 +97,8 @@ sevima-mini/
 ├── documents/                    # Dokumen keputusan arsitektural (ADR)
 │   ├── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
 │   ├── ADR-002.pdf               # ADR: Modularitas Domain Service Layer
-│   └── ADR-003.pdf               # ADR: Standardisasi Validasi Klien (HTTP 400 vs 422) & Integritas Relasional PMB
+│   ├── ADR-003.pdf               # ADR: Standardisasi Validasi Klien (HTTP 400 vs 422) & Integritas Relasional PMB
+│   └── ADR-004.pdf               # ADR: Generator NIM Multi-Worker Safe, Mitigasi Gap-Lock & State Machine PMB
 ├── tests/                        # Suite pengujian otomatis (unittest & pytest)
 │   ├── conftest.py               # Fixture pytest terpusat (StaticPool, db, client, prodi_ti)
 │   ├── test_pmb_pytest.py        # Pengujian modul PMB berbasis pytest (AAA pattern & idempotensi)
@@ -351,6 +352,7 @@ Keputusan desain arsitektural penting dicatat menggunakan format ADR resmi:
 - **[ADR-001: Memecah Relasi Many-to-Many Mahasiswa-Course Menggunakan Kelas Perantara Enrollment](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf):** Menjelaskan analisis konteks, alternatif opsi (relasi langsung vs perantara), pertimbangan trade-off, serta catatan peran revisi manual manusia terhadap saran AI.
 - **[ADR-002: Memecah Arsitektur Menjadi Modular Service Layer Berbasis Modul Domain](file:///home/zainun/git/istn/sevima-mini/documents/ADR-002.pdf):** Menjelaskan eliminasi *God Object* pada `Admin` dan dekomposisi logika sistem ke dalam 7 domain service independen.
 - **[ADR-003: Standardisasi Penanganan Validasi Klien (HTTP 400 vs 422) dan Integritas Relasional Modul PMB](file:///home/zainun/git/istn/sevima-mini/documents/ADR-003.pdf):** Menjelaskan adopsi Opsi A (override `RequestValidationError` ke HTTP 400 disertai sinkronisasi Swagger UI), penegakan foreign key SQLite, urutan aman rollback Alembic, dan prinsip *Privacy by Design*.
+- **[ADR-004: Desain Generator NIM Multi-Worker Safe Berbasis Row Lock Database, Mitigasi Gap-Lock Deadlock, dan State Machine PMB Idempoten](file:///home/zainun/git/istn/sevima-mini/documents/ADR-004.pdf):** Menjelaskan adopsi model dedicated `nim_counter`, atomic native UPSERT pencegah InnoDB gap-lock deadlock (Error 1213), batas transaksi atomik `db.flush()`, state machine approval/rejection dengan idempotensi self-healing, serta agregasi statistik database-level.
 
 ---
 
@@ -369,4 +371,5 @@ Seluruh interaksi bersama AI (Gemini 3.8 Flash) dicatat secara transparan pada [
 - [Dokumen Keputusan Arsitektur ADR-001 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-001.pdf)
 - [Dokumen Keputusan Arsitektur ADR-002 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-002.pdf)
 - [Dokumen Keputusan Arsitektur ADR-003 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-003.pdf)
+- [Dokumen Keputusan Arsitektur ADR-004 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-004.pdf)
 - [Log Penggunaan AI (OPAR)](file:///home/zainun/git/istn/sevima-mini/logs/ai-usage-log.md)

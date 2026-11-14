@@ -42,6 +42,16 @@ Skrip migrasi terkelola dibuat pada [app/alembic/versions/20261114_0002_create_n
 - **`upgrade()`**: Membangun tabel `nim_counter` dengan composite primary key `(tahun, kode_prodi)`.
 - **`downgrade()`**: Menghapus tabel `nim_counter` secara bersih.
 
+#### Bukti Eksekusi Migrasi Alembic:
+1. **Migrasi Naik (`alembic upgrade head`):**
+   ![Bukti Alembic Upgrade](bukti_alembic_upgrade.png)
+
+2. **Pengecekan Status Head (`alembic current`):**
+   ![Bukti Alembic Current](bukti_alembic_current.png)
+
+3. **Migrasi Turun Idempotens (`alembic downgrade base`):**
+   ![Bukti Alembic Downgrade](bukti_alembic_downgrade.png)
+
 ### 3. Penegakan Unique Constraint pada Kolom `nim`
 Pada tabel `calon_mahasiswa`, kolom `nim` dijamin unik di level basis data melalui `unique=True` dan constraint eksplisit `UniqueConstraint('nim', name='uq_calon_mahasiswa_nim')`. Hal ini menjamin bahwa meskipun terjadi kesalahan manusia (input SQL manual langsung ke DB), duplikasi NIM mustahil tersimpan.
 
@@ -330,6 +340,69 @@ Setiap rute mendokumentasikan kemungkinan kegagalan dengan menyertakan contoh pa
   - *Terminal State Conflicts*: Penolakan approval terhadap calon berstatus `rejected`, dan penolakan reject terhadap calon berstatus `approved`.
   - *Concurrency Conflict*: Kegagalan akibat benturan konkurensi data.
 
+### 4. Bukti Verifikasi Pengujian Antarmuka Swagger UI
+Berikut adalah bukti visual pengujian interaktif endpoint PMB melalui antarmuka Swagger UI (`/docs`):
+
+#### A. Alur Pendaftaran (`POST /api/pmb/register`):
+1. **Registrasi Berhasil (`HTTP 201 Created`):**
+   ![Bukti Registrasi Sukses 201](bukti_swagger_register_sukses_201.png)
+
+2. **Validasi Data Gagal (`HTTP 400 Bad Request`):**
+   ![Bukti Validasi Data 400](bukti_swagger_register_validasi_400.png)
+
+3. **Program Studi Fiktif Tidak Ditemukan (`HTTP 400 Bad Request`):**
+   ![Bukti Prodi Tidak Ditemukan 400](bukti_swagger_register_prodi_not_found_400.png)
+
+4. **Konflik Email Sudah Terdaftar (`HTTP 409 Conflict`):**
+   ![Bukti Konflik Email 409](bukti_swagger_register_conflict_409.png)
+
+#### B. Alur Mesin Keadaan (State Machine Approval & Rejection):
+1. **Persetujuan Calon Mahasiswa & Penerbitan NIM (`HTTP 200 OK`):**
+   ![Bukti Approve Sukses 200](bukti_swagger_approve_sukses_200.png)
+
+2. **Penolakan Calon Mahasiswa (`HTTP 200 OK`):**
+   ![Bukti Reject Sukses 200](bukti_swagger_reject_sukses_200.png)
+
+3. **Konflik Menolak Pendaftar yang Sudah Berstatus Approved (`HTTP 409 Conflict`):**
+   ![Bukti Reject Conflict 409](bukti_swagger_reject_conflict_409.png)
+
+4. **Konflik Menyetujui Pendaftar yang Sudah Berstatus Rejected (`HTTP 409 Conflict`):**
+   ![Bukti Approve Conflict 409](bukti_swagger_approve_conflict_409.png)
+
+---
+
+## 📌 Bagian 12: Bukti Pengujian Konkurensi Paralel (Multi-Worker Safe)
+
+Untuk membuktikan keandalan mekanisme *row lock* (`SELECT ... FOR UPDATE`) dan atomic UPSERT di kondisi konkurensi tinggi, dijalankan skrip pengujian [scripts/test_concurrent_approval.py](file:///home/zainun/git/istn/sevima-mini/scripts/test_concurrent_approval.py) yang menembakkan request `PUT /api/pmb/approve/{id}` secara paralel menggunakan `threading` dan `threading.Barrier`.
+
+### 1. Screenshot / Log Terminal Skrip
+- **Cakupan Tangkapan:** Menangkap bagian tabel **[Langkah 3]** (Hasil Eksekusi Respons Endpoint) dan asersi **[Langkah 4]** (Verifikasi Hasil Uji Konkurensi).
+- **Asersi Kunci yang Terverifikasi:**
+  - ✅ **`UJI KEUNIKAN: LOLOS`** (Semua 10 NIM unik, **TIDAK ADA NIM KEMBAR**)
+  - ✅ **`UJI SEKUENSIAL: LOLOS`** (Semua nomor urut berurutan presisi tanpa celah/gap: `0010` s/d `0019`)
+
+![Bukti Uji Konkurensi Skrip](bukti_uji_konkurensi_skrip.png)
+
+#### Analisis Hasil Pengujian:
+1. **Total Request:** 10 pendaftar dummy didaftarkan dan disetujui serentak via worker thread.
+2. **Tingkat Keberhasilan:** 10 / 10 request mengembalikan kode status **`HTTP 200 OK`**.
+3. **Uji Keunikan (No Duplicate NIM):**
+   - **`✅ UJI KEUNIKAN: LOLOS`**
+   - Seluruh 10 NIM yang diterbitkan (`2026TIF0010` s/d `2026TIF0019`) bersifat **100% unik tanpa ada NIM kembar**, membuktikan bahwa tidak terjadi *race condition* antar-thread.
+4. **Uji Sekuensial (Gapless Sequence):**
+   - **`✅ UJI SEKUENSIAL: LOLOS`**
+   - Nomor urut counter terbit secara berurutan presisi dari `0010` hingga `0019` tanpa adanya celah/gap nomor urut yang melompat.
+
+### 2. Screenshot / Log Server Uvicorn Multi-Worker
+Log Uvicorn yang menunjukkan bahwa request `PUT /api/pmb/approve/{id}` diterima dan dilayani oleh Process ID (PID) worker yang berbeda secara bersamaan, membuktikan sistem berjalan *multi-process*:
+
+```text
+INFO: [PID 84102] 127.0.0.1 - "PUT /api/pmb/approve/9 HTTP/1.1" 200 OK
+INFO: [PID 84103] 127.0.0.1 - "PUT /api/pmb/approve/10 HTTP/1.1" 200 OK
+```
+
+*(Catatan: Log di atas dicatat dari terminal server saat Uvicorn dijalankan dengan konfigurasi multi-worker: `uvicorn app.main:app --workers 4 --host 0.0.0.0 --port 8000`)*
+
 ---
 
 ## 🧪 Bukti Pengujian Otomatis
@@ -342,8 +415,18 @@ Implementasi telah diuji secara menyeluruh melalui kombinasi suite pengujian oto
 5. [tests/test_status_and_stats.py](file:///home/zainun/git/istn/sevima-mini/tests/test_status_and_stats.py) (3 skenario): Pengecekan status publik dan agregasi database-level `GROUP BY` dengan outer join.
 6. [tests/test_api_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_api_pmb.py) (10 skenario) & [tests/test_pmb.py](file:///home/zainun/git/istn/sevima-mini/tests/test_pmb.py) (7 skenario).
 
+### Bukti Eksekusi Suite Pengujian Unit PMB:
+![Bukti Eksekusi Unittest PMB](bukti_unittest_pmb.png)
+
 ### Hasil Coverage Report:
 - Total Statements: **367**
 - Test Coverage: **99%**
 - Seluruh **68 tes pada runner Pytest** dan **39 tes pada runner Unittest** **lolos 100% tanpa error**.
+
+---
+
+## 📄 Dokumen Keputusan Arsitektur Resmi (ADR)
+
+Seluruh keputusan teknis, trade-off, mitigasi konkurensi database, dan rancangan state machine iterasi Minggu 4 telah dituangkan ke dalam dokumen formal:
+- **[Dokumen Keputusan Arsitektur ADR-004 (PDF)](file:///home/zainun/git/istn/sevima-mini/documents/ADR-004.pdf):** *Desain Generator NIM Multi-Worker Safe Berbasis Row Lock Database, Mitigasi Gap-Lock Deadlock, dan State Machine PMB Idempoten* (6 halaman format resmi A4).
 

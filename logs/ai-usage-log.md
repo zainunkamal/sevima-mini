@@ -914,6 +914,34 @@
 - **Act:** Mengedit `app/routers/pmb.py`, memverifikasi skema JSON OpenAPI via `app.openapi()`, memastikan seluruh 68 unit test lolos tanpa regresi, memperbarui dokumentasi Minggu 4, serta mencatat entri log AI.
 - **Reflect:** Dokumentasi OpenAPI yang lengkap dan tersinkronisasi langsung dengan kode (*living documentation*) menjamin transparansi arsitektur API dan memudahkan kolaborasi lintas tim rekayasa perangkat lunak.
 
+---
+
+### Prompt #9 (versi: V9 - Skrip Uji Konkurensi Paralel, Konfigurasi Dinamis .env, Penerbitan ADR-004 PDF, dan Verifikasi Empiris)
+- **Tanggal / alat AI:** 15 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:**
+  1. Membuat skrip pengujian manual konkurensi paralel [scripts/test_concurrent_approval.py](file:///home/zainun/git/istn/sevima-mini/scripts/test_concurrent_approval.py) menggunakan `requests`, `threading`, dan `threading.Barrier` untuk menguji $N$ pasang request persetujuan simultan, membuktikan ketiadaan NIM ganda (*zero duplicate NIM*) dan keteraturan urutan tanpa celah (*gapless sequence*).
+  2. Menyempurnakan konfigurasi koneksi basis data pada [app/database.py](file:///home/zainun/git/istn/sevima-mini/app/database.py) dan [app/alembic/env.py](file:///home/zainun/git/istn/sevima-mini/app/alembic/env.py) agar dinamis membaca berkas `.env` via `python-dotenv`, mendukung koneksi MySQL di produksi (`pymysql`, `cryptography`) dan SQLite di pengujian, dengan parameter driver yang aman (`check_same_thread` dan `PRAGMA foreign_keys` hanya diaktifkan jika dialek SQLite).
+  3. Mengorganisasi seluruh tangkapan layar bukti eksekusi dari `SS/` ke [perbaikan/minggu-04/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/) dengan penamaan berkas standar yang deskriptif (bukti skrip uji konkurensi, migrasi Alembic, eksekusi unittest, dan Swagger UI).
+  4. Menerbitkan dokumen Architecture Decision Record resmi [documents/ADR-004.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-004.pdf) setebal 6 halaman standar A4 menggunakan engine LibreOffice headless.
+  5. Menyelaraskan katalog dan tautan di [README.md](file:///home/zainun/git/istn/sevima-mini/README.md), [perbaikan/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/README.md), dan [perbaikan/minggu-04/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/README.md).
+- **Output ringkas:**
+  1. Berkas skrip konkurensi mandiri [scripts/test_concurrent_approval.py](file:///home/zainun/git/istn/sevima-mini/scripts/test_concurrent_approval.py) lengkap dengan verifikasi asersi keunikan dan sekuensial.
+  2. Templat konfigurasi lingkungan [.env.example](file:///home/zainun/git/istn/sevima-mini/.env.example) serta proteksi keamanan [.gitignore](file:///home/zainun/git/istn/sevima-mini/.gitignore) untuk `.env` dan `.env.local`.
+  3. Dokumen resmi [documents/ADR-004.pdf](file:///home/zainun/git/istn/sevima-mini/documents/ADR-004.pdf) dengan 7 bagian komprehensif (Konteks, 4 Alternatif Desain, Keputusan Transaksi & State Machine, Konsekuensi, 9 Pola Desain Terapan, Transparansi AI & Bukti Empiris, serta Referensi).
+  4. Penyusunan 13 tangkapan layar bukti pengujian di [perbaikan/minggu-04/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-04/) yang terintegrasi di dokumen laporan.
+  5. Verifikasi pengujian otomatis: Seluruh **68 tes pytest** dan **39 tes unittest** lolos 100% dengan cakupan kode **99%**.
+- **Keputusan Arsitektur Utama:**
+  1. **Empirical Concurrency Verification:** Menegaskan bahwa pengujian konkurensi tidak cukup hanya mengandalkan unit test mock, melainkan wajib diverifikasi secara empiris melalui *stress test* paralel multi-thread/multi-worker di lingkungan jaringan HTTP riil.
+  2. **Multi-Dialect Compatibility by Environment:** Mengadopsi prinsip *Twelve-Factor App* (Konfigurasi di Environment) untuk memisahkan konfigurasi database lokal SQLite dan produksi MySQL tanpa mengubah kode inti aplikasi.
+- **Commit terkait:** `[PENDING COMMIT HASH]` - `docs(adr): create ADR-004 PDF and finalize week 4 concurrency test documentation`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Setelah implementasi row lock dan state machine selesai, diperlukan bukti empiris bahwa request simultan dari banyak worker tidak menghasilkan NIM kembar atau celah nomor urut loncat. Selain itu, diperlukan dukungan konfigurasi `.env` yang fleksibel untuk migrasi ke MySQL, pengorganisasian bukti visual, dan penerbitan dokumen formal ADR-004 format PDF.
+- **Plan:** Membangun skrip uji konkurensi paralel berbasis `threading.Barrier`, memperbarui `database.py` dan `env.py` agar agnostik dialek, menata tangkapan layar di `perbaikan/minggu-04/`, menghasilkan PDF ADR-004 via LibreOffice headless, dan memperbarui seluruh referensi dokumen.
+- **Act:** Menulis skrip uji dan memverifikasi output 10 request (100% unik & gapless), memasang `python-dotenv`, merender dokumen ADR-004 (6 halaman A4 rapi tanpa teks terpotong), memperbarui tabel bukti di `perbaikan/minggu-04/README.md`, dan memastikan status tes tetap hijau.
+- **Reflect:** Kombinasi antara pembuktian empiris berbasis skrip konkurensi dan dokumentasi keputusan arsitektur (ADR) berstandar PDF menyajikan transparansi teknis tingkat tinggi yang membuktikan kesiapan modul PMB untuk lingkungan produksi skala enterprise.
+
+
 
 
 

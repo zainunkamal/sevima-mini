@@ -105,6 +105,9 @@ Berdasarkan audit teknis backend dan penelusuran kasus tepi regex, dilakukan pen
    - Penambahan pre-validator `@field_validator("phone", mode="before")` untuk membuang spasi, tanda hubung (`-`), titik (`.`), dan tanda kurung `()` sebelum dicek regex, sehingga penulisan humanis seperti `0812-3456-7890` tetap diterima.
 4. **Validasi Batas Usia Bisnis pada Tanggal Lahir:** Menambahkan `@field_validator("tanggal_lahir")` pada Pydantic untuk menolak tanggal lahir di masa depan serta membatasi usia wajar calon mahasiswa (14 hingga 80 tahun).
 5. **Ketatnya Tipe State Respons:** Mengikat atribut `status` pada `PendaftarOut` langsung ke tipe domain `StatusPMB` Enum.
+6. **Keputusan Arsitektur Adopsi Opsi A (RequestValidationError -> 400 & Sinkronisasi Swagger):**
+   - Menyelaraskan seluruh kegagalan validasi format klien ke kode status standar `HTTP 400 Bad Request` sesuai kontrak dokumen tugas.
+   - Melakukan kustomisasi generator OpenAPI (`app.openapi`) untuk menghapus respons bawaan status `422` dari skema OpenAPI, sehingga dokumentasi Swagger UI secara presisi dan konsisten hanya menampilkan status `201 Created`, `400 Bad Request`, dan `409 Conflict`.
 
 ---
 

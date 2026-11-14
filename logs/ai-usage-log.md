@@ -515,3 +515,34 @@
 - **Plan:** Menambahkan pre-validator pembersih karakter sebelum validasi regex berjalan di Pydantic, melonggarkan batas minimum digit dari 6 ke 5 digit, serta memperbarui unit test.
 - **Act:** Mengimplementasikan regex `^(\+62|62|0)8[1-9][0-9]{5,10}$` dan validator `sanitize_phone_number` di `app/schemas/pmb.py`, menambahkan 3 kasus uji baru di `tests/test_api_pmb.py`, memperbarui pesan error di `app/main.py`, dan mengeksekusi 17 unit test.
 - **Reflect:** Validasi data yang ramah pengguna (*user-friendly validation*) harus bersifat *forgiving on input, strict on storage*—menerima variasi penulisan yang wajar dari manusia, membersihkannya secara otomatis, dan memastikan format yang disimpan ke basis data selalu bersih dan terstandarisasi.
+
+---
+
+### Prompt #6 (versi: V6 - Keputusan Arsitektur Opsi A: Override RequestValidationError ke 400 & Sinkronisasi Swagger UI)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Mengadopsi Opsi A untuk penanganan validasi Pydantic (mengubah HTTP 422 bawaan menjadi HTTP 400 Bad Request) sesuai dokumen spesifikasi tugas, serta menyelaraskan dokumentasi OpenAPI/Swagger UI dengan mengeliminasi skema status 422.
+- **Prompt:**
+  ```text
+  Di FastAPI, kegagalan validasi Pydantic secara default menghasilkan 422.
+  Tes di dokumen tugas saya mengharapkan 400 untuk nomor HP salah.
+  Berikan dua opsi: (A) exception handler RequestValidationError yang
+  mengubah menjadi 400, (B) tetap 422 dan menyesuaikan tes. Untuk tiap
+  opsi: kode lengkap, kelebihan, kekurangan, dan dampak pada Swagger.
+  Jangan memilihkan; saya yang memutuskan dan menulis di ADR.
+  ```
+  *(Dilanjutkan dengan persetujuan pengguna untuk mengadopsi Opsi A secara permanen)*.
+- **Output ringkas:**
+  1. Exception handler `@app.exception_handler(RequestValidationError)` pada [app/main.py](file:///home/zainun/git/istn/sevima-mini/app/main.py) mengembalikan HTTP 400 Bad Request dengan pesan humanis tanpa *stack trace*.
+  2. Modifikasi generator skema `custom_openapi` di [app/main.py](file:///home/zainun/git/istn/sevima-mini/app/main.py) yang membersihkan status 422 bawaan FastAPI agar Swagger UI `/docs` konsisten 100% dengan respons runtime (hanya menampilkan status `201`, `400`, dan `409`).
+  3. Deklarasi kontrak respons eksplisit `400` dan `409` pada decorator endpoint [app/routers/pmb.py](file:///home/zainun/git/istn/sevima-mini/app/routers/pmb.py).
+  4. Pencatatan pembaruan pada [perbaikan/minggu-03/README.md](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-03/README.md).
+- **Keputusan Arsitektur Utama:**
+  1. **Kepatuhan Kontrak Dokumen Tugas:** Opsi A dipilih agar sistem mematuhi ekspektasi penilaian tugas akademik yang mensyaratkan kode respons `HTTP 400` untuk input format nomor HP atau data registrasi yang salah.
+  2. **Eliminasi Inkonsistensi Swagger:** Secara bawaan di FastAPI, pengubahan status melalui exception handler tidak otomatis mengubah skema OpenAPI. Dengan mengimplementasikan `custom_openapi()`, tampilan Swagger UI disinkronkan secara total sehingga tidak menampilkan status 422 yang sudah tidak lagi dipakai.
+- **Commit terkait:** `pending` - `feat(api): adopt Option A overriding RequestValidationError to 400 with Swagger sync [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** Terdapat diskrepansi antara konvensi modern FastAPI (HTTP 422) dengan naskah spesifikasi tugas yang mengasumsikan HTTP 400 untuk format input tidak valid. Selain itu, mengubah exception handler di FastAPI tanpa memodifikasi skema OpenAPI meninggalkan dokumentasi Swagger yang tidak sinkron.
+- **Plan:** Mengimplementasikan Opsi A secara paripurna: memasang *exception interceptor* untuk runtime HTTP 400, sekaligus mengintersep generator OpenAPI agar skema dokumentasi Swagger `/docs` mencerminkan kontrak status respons yang sesungguhnya.
+- **Act:** Mengonfigurasi `validation_exception_handler` dan `custom_openapi` di `app/main.py`, menambahkan metadata `responses` di `app/routers/pmb.py`, memverifikasi 17 unit test lolos 100%, serta mendokumentasikan keputusan arsitektur.
+- **Reflect:** Keputusan arsitektur (ADR) yang matang harus memperhitungkan keselarasan antara *runtime behavior* dengan *documentation contracts*. Menyelaraskan skema OpenAPI saat melakukan override exception handler framework mencegah kebingungan tim frontend dan penguji API.

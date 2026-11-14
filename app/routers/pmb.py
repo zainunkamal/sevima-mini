@@ -13,6 +13,32 @@ router = APIRouter(prefix="/api/pmb", tags=["PMB"])
     response_model=PendaftarOut,
     status_code=status.HTTP_201_CREATED,
     summary="Pendaftaran Calon Mahasiswa Baru",
+    responses={
+        400: {
+            "description": "Validation Error atau Referensi Tidak Ditemukan",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Data pendaftaran yang dikirimkan tidak valid",
+                        "errors": [
+                            "nama_lengkap: Panjang minimal adalah 3 karakter",
+                            "phone: Format nomor HP tidak valid (harus nomor Indonesia dengan awalan 08, 62, atau +62)",
+                        ],
+                    }
+                }
+            },
+        },
+        409: {
+            "description": "Email Duplikat / Konflik Data",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Email sudah terdaftar. Silakan gunakan alamat email lain."
+                    }
+                }
+            },
+        },
+    },
 )
 def register(
     payload: RegisterRequest,

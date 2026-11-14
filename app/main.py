@@ -53,6 +53,30 @@ async def validation_exception_handler(
 app.include_router(pmb_router)
 
 
+# Custom OpenAPI Generator: Menghapus respon bawaan 422 agar Swagger UI
+# sepenuhnya selaras dengan Opsi A (Validasi Pydantic merespons HTTP 400)
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    for path, methods in openapi_schema.get("paths", {}).items():
+        for method, spec in methods.items():
+            if "responses" in spec and "422" in spec["responses"]:
+                del spec["responses"]["422"]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+
 @app.get("/", tags=["Health Check"])
 def root():
     return {"message": "SEVIMA Mini API is running"}

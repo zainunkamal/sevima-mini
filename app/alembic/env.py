@@ -46,6 +46,7 @@ def run_migrations_online() -> None:
         # Aktifkan penegakan Foreign Key di level koneksi SQLite saat migrasi
         if connection.dialect.name == "sqlite":
             connection.execute(sa.text("PRAGMA foreign_keys = ON;"))
+            connection.commit()
 
         context.configure(
             connection=connection,
@@ -55,6 +56,7 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
+        connection.commit()
 
 
 if context.is_offline_mode():

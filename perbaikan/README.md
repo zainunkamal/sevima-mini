@@ -8,6 +8,7 @@ Dokumen ini mencatat bukti visual dan perbandingan evolusi class diagram UML sis
 
 - [minggu-01/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-01): Berisi seluruh artefak tangkapan layar (*screenshot*) bukti visual evolusi class diagram Versi 1 hingga Versi 4.
 - [minggu-02/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-02): Berisi artefak visual Use Case Diagram SEVIMA Mini (Versi 1) dan perbaikan berikutnya.
+- [minggu-03/](file:///home/zainun/git/istn/sevima-mini/perbaikan/minggu-03): Berisi dokumentasi dan artefak implementasi basis data modul PMB (SQLAlchemy 2.0 & migrasi Alembic).
 
 ---
 

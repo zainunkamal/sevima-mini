@@ -1,0 +1,1 @@
+"""SEVIMA Mini Application Package."""

@@ -338,3 +338,56 @@
 - **Plan:** Menyelaraskan arsitektur dengan 3 GoF pattern secara proporsional (*lean*): Factory untuk integritas data user, Observer untuk *loose-coupling* event KRS, dan Strategy untuk ekstensibilitas aturan validasi tanpa kelas berlebih.
 - **Act:** Mengintegrasikan struktur kelas ke Mermaid, memperbarui dokumentasi teknis, menghasilkan rendering gambar resolusi tinggi melalui Kroki, serta mencatat riwayat pembaruan ke README dan log AI.
 - **Reflect:** Desain pola (*design patterns*) yang diterapkan secara tepat sasaran mampu meningkatkan fleksibilitas dan ketahanan sistem tanpa menciptakan *over-engineering* atau kompleksitas yang tidak perlu.
+
+---
+
+## AI Usage Log: Minggu 3
+
+### Prompt #1 (versi: V1 - Implementasi Model Data SQLAlchemy 2.0 & Migrasi Alembic PMB)
+- **Tanggal / alat AI:** 14 November 2026 / Gemini (Gemini 3.8 Flash)
+- **Tujuan:** Mengimplementasikan model basis data modern SQLAlchemy 2.0 (`Mapped` dan `mapped_column`) dan skrip migrasi terkelola Alembic untuk 3 tabel modul PMB (`program_studi`, `jalur_masuk`, `calon_mahasiswa`) berbasis SQLite, menjamin integritas relasional via `PRAGMA foreign_keys = ON;`, dan memetakan batas penegakan constraint antara database dan aplikasi.
+- **Prompt:**
+  ```text
+  Anda adalah backend engineer Python senior.
+
+  Konteks: modul PMB (penerimaan mahasiswa baru) sistem akademik "SEVIMA Mini".
+  Stack: Python, SQLAlchemy 2 (gaya Mapped dan mapped_column, BUKAN gaya lama
+  declarative_base/Column), Alembic, database SQLite.
+
+  Buat model SQLAlchemy dan migrasi Alembic untuk 3 tabel:
+  1. program_studi: id (PK), kode (string 3 karakter, UNIQUE), nama, fakultas.
+  2. jalur_masuk: id (PK), nama (UNIQUE; contoh SNBP, SNBT, Mandiri).
+  3. calon_mahasiswa: id (PK), nama_lengkap (NOT NULL), email (UNIQUE, index,
+     NOT NULL), phone (STRING, bukan integer), tanggal_lahir, alamat,
+     program_studi_id (FK, NOT NULL), jalur_masuk_id (FK), status
+     (ENUM: pending/approved/rejected, default pending, dengan CHECK constraint
+     aktif), nim (nullable, UNIQUE), created_at (server_default now),
+     approved_at (nullable).
+
+  Syarat:
+  - Migrasi punya fungsi upgrade DAN downgrade (downgrade menghapus
+    calon_mahasiswa lebih dulu).
+  - Aktifkan PRAGMA foreign_keys untuk SQLite.
+  - Format nomor HP TIDAK divalidasi di database (SQLite tanpa regex bawaan);
+    database cukup membatasi panjang.
+  - Jelaskan singkat di mana setiap constraint ditegakkan (database atau aplikasi).
+
+  Format output: kode per file (models, migrasi), lalu penjelasan singkat.
+  ```
+- **Output ringkas:**
+  1. Modul engine dan koneksi basis data di `app/database.py` dengan hook listener `@event.listens_for(Engine, "connect")` untuk mengaktifkan `PRAGMA foreign_keys=ON;` secara otomatis pada setiap sesi koneksi SQLite.
+  2. Model deklaratif ORM modern di `app/models/pmb.py` menggunakan `Mapped` dan `mapped_column` dengan relasi dua arah (`relationship`), pembatasan panjang kolom, dan `CheckConstraint` aktif untuk status PMB.
+  3. Konfigurasi runner migrasi di `alembic/env.py` dengan penegakan SQLite pragma dan `render_as_batch=True`.
+  4. Skrip migrasi terkelola di `alembic/versions/20261114_0001_create_pmb_tables.py` dengan implementasi `upgrade()` dan `downgrade()` terurut (tabel `calon_mahasiswa` dihapus lebih dulu untuk menjaga kepatuhan FK constraint).
+  5. Dokumentasi dan matriks perbandingan tanggung jawab constraint antara basis data dan lapisan aplikasi di `perbaikan/minggu-03/README.md`.
+- **Keputusan Arsitektur Utama:**
+  1. **Aktivasi Pragma Foreign Keys SQLite:** SQLite menonaktifkan FK secara *default*. Penegakan dilakukan pada dua titik kritis: *runtime application connection* (`app/database.py`) dan *migration connection runner* (`alembic/env.py` & skrip migrasi).
+  2. **Penyimpanan Nomor Telepon:** Nomor HP disimpan sebagai `VARCHAR(20)` (String, bukan Integer) untuk mempertahankan digit nol di awal (*leading zero*) dan kode negara (`+62`). Pembatasan panjang diterapkan di database, sedangkan validasi pola format diserahkan ke *application layer* (Pydantic / service layer) karena SQLite standar tidak memiliki mesin regex *native*.
+  3. **Urutan Downgrade Konsisten:** Skrip migrasi `downgrade()` menghapus tabel `calon_mahasiswa` terlebih dahulu sebelum menghapus `jalur_masuk` dan `program_studi` guna mencegah pelanggaran integritas referensial.
+- **Commit terkait:** `pending` - `feat(pmb): implement SQLAlchemy 2 models and Alembic migration for PMB module [AI-Assisted]`
+
+### Refleksi (Observe - Plan - Act - Reflect)
+- **Observe:** SQLite memiliki karakteristik khusus di mana penegakan *foreign key* harus diaktifkan secara eksplisit per koneksi dan ketiadaan fungsi bawaan regex untuk validasi format teks kompleks.
+- **Plan:** Menyusun konfigurasi SQLAlchemy 2.0 murni (`DeclarativeBase`, `Mapped`, `mapped_column`), menambahkan event listener koneksi engine SQLite, mengonfigurasi batch mode pada Alembic, dan merancang skema yang membagi peran validasi secara seimbang antara database dan domain aplikasi.
+- **Act:** Mengimplementasikan kode per berkas secara modular (`app/database.py`, `app/models/pmb.py`, `alembic.ini`, `alembic/env.py`, skrip migrasi), mendokumentasikan spesifikasi di README Minggu 3, dan menyinkronkan struktur proyek.
+- **Reflect:** Menegakkan aturan integritas pada level yang tepat (skema fisik di database, aturan format & siklus hidup bisnis di aplikasi) menghasilkan sistem yang tangguh, mencegah korupsi data, sekaligus menjaga efisiensi komputasi basis data.

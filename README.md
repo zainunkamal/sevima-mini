@@ -67,16 +67,30 @@ sevima-mini/
 │   │   ├── diagram_sesudah_dirubah.png  # Versi 2 (Enkapsulasi penuh & hitungIPK)
 │   │   ├── diagram_versi_3.png          # Versi 3 (Refactoring relasi & kardinalitas)
 │   │   └── diagram_versi_4.png          # Versi 4 (Perbaikan arsitektur kritis 1-4)
-│   └── minggu-02/                # Bukti visual pemodelan dinamis & sinkronisasi Minggu 2
-│       ├── class_diagram_versi_7.png    # Screenshot Class Diagram Versi 7 (Factory, Observer, Strategy)
-│       ├── use_case_versi_2.png         # Screenshot Use Case Diagram Versi 2
-│       ├── krs_sequence_diagram_versi_2.png # Screenshot Sequence Validasi KRS
-│       ├── pmb_sequence_diagram_versi_2.png # Screenshot Sequence PMB
-│       ├── krs_approval_sequence_diagram_versi_1.png # Screenshot Sequence Approve/Revisi KRS
-│       ├── payment_sequence_diagram_versi_1.png      # Screenshot Sequence Pembayaran SPP
-│       └── grading_transcript_sequence_diagram_versi_1.png # Screenshot Sequence Penilaian/Transkrip
+│   ├── minggu-02/                # Bukti visual pemodelan dinamis & sinkronisasi Minggu 2
+│   │   ├── class_diagram_versi_7.png    # Screenshot Class Diagram Versi 7 (Factory, Observer, Strategy)
+│   │   ├── use_case_versi_2.png         # Screenshot Use Case Diagram Versi 2
+│   │   ├── krs_sequence_diagram_versi_2.png # Screenshot Sequence Validasi KRS
+│   │   ├── pmb_sequence_diagram_versi_2.png # Screenshot Sequence PMB
+│   │   ├── krs_approval_sequence_diagram_versi_1.png # Screenshot Sequence Approve/Revisi KRS
+│   │   ├── payment_sequence_diagram_versi_1.png      # Screenshot Sequence Pembayaran SPP
+│   │   └── grading_transcript_sequence_diagram_versi_1.png # Screenshot Sequence Penilaian/Transkrip
+│   └── minggu-03/                # Dokumentasi implementasi basis data modul PMB
+│       └── README.md             # Spesifikasi model SQLAlchemy 2.0 & migrasi Alembic
+├── app/                          # Kode sumber backend aplikasi (Python/SQLAlchemy 2.0)
+│   ├── database.py               # Setup engine, session, dan SQLite PRAGMA listener
+│   └── models/                   # Definisi model deklaratif ORM
+│       ├── __init__.py           # Package registry model
+│       └── pmb.py                # Model ProgramStudi, JalurMasuk, CalonMahasiswa
+├── alembic/                      # Konfigurasi dan berkas migrasi skema basis data
+│   ├── env.py                    # Environment runner Alembic dengan SQLite PRAGMA hook
+│   ├── script.py.mako            # Template migrasi
+│   └── versions/                 # Riwayat migrasi versi basis data
+│       └── 20261114_0001_create_pmb_tables.py # Migrasi awal 3 tabel PMB
+├── alembic.ini                   # Konfigurasi utama Alembic
 ├── documents/                    # Dokumen keputusan arsitektural (ADR)
-│   └── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
+│   ├── ADR-001.pdf               # ADR: Pemecahan Relasi M:N dengan Kelas Perantara Enrollment
+│   └── ADR-002.pdf               # ADR: Modularitas Domain Service Layer
 └── logs/                         # Catatan transparansi penggunaan AI
     └── ai-usage-log.md           # Log interaksi AI dengan kerangka OPAR (Observe-Plan-Act-Reflect)
 ```
